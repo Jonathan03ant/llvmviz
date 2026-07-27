@@ -8,7 +8,7 @@ interface HeaderProps {
 const tabs = [
   { id: 'selectiondag', label: 'SelectionDAG' },
   { id: 'irpasses', label: 'IR Passes', disabled: true },
-  { id: 'mir', label: 'MIR', disabled: true },
+  { id: 'mir', label: 'MIR', disabled: false },
   { id: 'assembly', label: 'Assembly', disabled: true },
 ]
 

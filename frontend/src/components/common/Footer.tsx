@@ -17,6 +17,14 @@ interface FooterProps {
   onCompareStageChange: (stage: string) => void
   onRun: () => void
   isLoading: boolean
+  onViewMIR?: () => void
+  isMIRLoading?: boolean
+  mode?: 'selectiondag' | 'mir'
+  onDiscoverPasses?: () => void
+  isDiscovering?: boolean
+  mirPasses?: Array<{name: string, id: string}>  // All MIR passes for dropdown
+  selectedMirPass?: string  // Currently selected MIR pass ID
+  onMirPassChange?: (passId: string) => void  // Handler for MIR pass selection
 }
 
 const DAG_STAGES = [
@@ -43,10 +51,26 @@ export function Footer({
   compareStage,
   onCompareStageChange,
   onRun,
-  isLoading
+  isLoading,
+  onViewMIR,
+  isMIRLoading = false,
+  mode = 'selectiondag',
+  onDiscoverPasses,
+  isDiscovering = false,
+  mirPasses = [],
+  selectedMirPass = '',
+  onMirPassChange
 }: FooterProps) {
   const archOptions = architectures.map(a => ({ value: a.name, label: a.name }))
   const cpuOptions = cpus.map(c => ({ value: c.name, label: c.name }))
+
+  // MIR pass options with count header
+  const mirPassOptions = mirPasses.length > 0
+    ? [
+        { value: '', label: `${mirPasses.length} passes discovered` },
+        ...mirPasses.map(p => ({ value: p.id, label: p.name }))
+      ]
+    : [{ value: '', label: 'Discover passes first' }]
   return (
     <div
       className="bg-[#000000] border-t border-[#1a1a1a] px-6 py-2 flex items-center justify-between"
@@ -79,46 +103,109 @@ export function Footer({
         <div className="flex items-center gap-2">
           <span className="text-[#909090]">GPU:</span>
           <CustomSelect
+            key={`cpu-${cpus.length}-${cpu}`}
             value={cpu}
             options={cpuOptions.length > 0 ? cpuOptions : [{ value: cpu, label: cpu }]}
             onChange={onCpuChange}
             disabled={cpuOptions.length === 0}
           />
         </div>
+
+        {/* Common control - Stage/MIR Pass selector */}
         <div className="w-px h-4 bg-[#1a1a1a]"></div>
         <div className="flex items-center gap-2">
-          <span className="text-[#909090]">Stage:</span>
-          <CustomSelect value={stage} options={DAG_STAGES} onChange={onStageChange} />
-        </div>
-        <div className="w-px h-4 bg-[#1a1a1a]"></div>
-        <div className="flex items-center gap-2">
-          <label className="flex items-center gap-1.5 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={compareEnabled}
-              onChange={(e) => onCompareEnabledChange(e.target.checked)}
-              className="w-3.5 h-3.5 cursor-pointer accent-[#18a018]"
+          <span className="text-[#909090]">
+            {mode === 'selectiondag' ? 'Stage:' : 'MIR Pass:'}
+          </span>
+          {mode === 'selectiondag' ? (
+            <CustomSelect value={stage} options={DAG_STAGES} onChange={onStageChange} />
+          ) : (
+            <CustomSelect
+              value={selectedMirPass}
+              options={mirPassOptions}
+              onChange={(value) => onMirPassChange && onMirPassChange(value)}
+              disabled={mirPasses.length === 0}
             />
-            <span className="text-[#909090]">Compare</span>
-          </label>
-          {compareEnabled && (
-            <>
-              <span className="text-[#909090]">vs</span>
-              <CustomSelect value={compareStage} options={DAG_STAGES} onChange={onCompareStageChange} />
-            </>
           )}
         </div>
+
+        {/* SelectionDAG-specific controls */}
+        {mode === 'selectiondag' && (
+          <>
+            <div className="w-px h-4 bg-[#1a1a1a]"></div>
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={compareEnabled}
+                  onChange={(e) => onCompareEnabledChange(e.target.checked)}
+                  className="w-3.5 h-3.5 cursor-pointer accent-[#18a018]"
+                />
+                <span className="text-[#909090]">Compare</span>
+              </label>
+              {compareEnabled && (
+                <>
+                  <span className="text-[#909090]">vs</span>
+                  <CustomSelect value={compareStage} options={DAG_STAGES} onChange={onCompareStageChange} />
+                </>
+              )}
+            </div>
+          </>
+        )}
       </div>
 
-      {/* Right side - Run button */}
-      <button
-        onClick={onRun}
-        disabled={isLoading}
-        className="px-6 py-1.5 text-[#18a018] font-bold text-sm hover:text-[#20c020] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        style={{ fontFamily: 'JetBrains Mono, monospace' }}
-      >
-        {isLoading ? '⏳ Running...' : '▶ RUN'}
-      </button>
+      {/* Right side - Buttons */}
+      <div className="flex items-center gap-3">
+        {/* SelectionDAG mode buttons */}
+        {mode === 'selectiondag' && (
+          <>
+            {onViewMIR && (
+              <button
+                onClick={onViewMIR}
+                disabled={isMIRLoading}
+                className="px-6 py-1.5 text-[#18a018] font-bold text-sm hover:text-[#20c020] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ fontFamily: 'JetBrains Mono, monospace' }}
+              >
+                {isMIRLoading ? 'Generating...' : 'View MIR'}
+              </button>
+            )}
+            <button
+              onClick={onRun}
+              disabled={isLoading}
+              className="px-6 py-1.5 text-[#18a018] font-bold text-sm hover:text-[#20c020] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ fontFamily: 'JetBrains Mono, monospace' }}
+            >
+              {isLoading ? 'Running...' : '▶ RUN'}
+            </button>
+          </>
+        )}
+
+        {/* MIR mode buttons */}
+        {mode === 'mir' && (
+          <>
+            {onViewMIR && (
+              <button
+                onClick={onViewMIR}
+                disabled={isMIRLoading}
+                className="px-6 py-1.5 text-[#18a018] font-bold text-sm hover:text-[#20c020] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ fontFamily: 'JetBrains Mono, monospace' }}
+              >
+                {isMIRLoading ? 'Generating...' : 'View MIR'}
+              </button>
+            )}
+            {onDiscoverPasses && (
+              <button
+                onClick={onDiscoverPasses}
+                disabled={isDiscovering}
+                className="px-6 py-1.5 text-[#18a018] font-bold text-sm hover:text-[#20c020] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ fontFamily: 'JetBrains Mono, monospace' }}
+              >
+                {isDiscovering ? 'Discovering...' : 'Discover Passes'}
+              </button>
+            )}
+          </>
+        )}
+      </div>
     </div>
   )
 }
