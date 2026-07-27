@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
-import { Header, InputPanel, Footer } from './components/common'
+import { Header, InputPanel, Footer, MIRModal } from './components/common'
 import type { TerminalLine } from './components/common'
-import { SelectionDAGViewer } from './components/tools'
+import { SelectionDAGViewer, MIRViewer } from './components/tools'
 import './App.css'
 
 function App() {
@@ -13,6 +13,14 @@ function App() {
   const [stage, setStage] = useState('isel')
   const [terminalOutput, setTerminalOutput] = useState<TerminalLine[]>([])
 
+
+  // Compare mode state
+  const [compareEnabled, setCompareEnabled] = useState(false)
+  const [compareStage, setCompareStage] = useState('legalize')
+  const [compareNodes, setCompareNodes] = useState<any[]>([])
+  const [compareEdges, setCompareEdges] = useState<any[]>([])
+  const [comparison, setComparison] = useState<any>(null)
+
   // Settings - dynamic arch/CPU
   const [llcPath, setLlcPath] = useState('/path/to/llc')
   const [architectures, setArchitectures] = useState<Array<{name: string, description: string}>>([])
@@ -20,6 +28,20 @@ function App() {
   const [arch, setArch] = useState('amdgcn')
   const [cpu, setCpu] = useState('gfx1101')
   const [loadingTargets, setLoadingTargets] = useState(false)
+
+  // MIR viewer state
+  const [showMIRModal, setShowMIRModal] = useState(false)
+  const [mirContent, setMirContent] = useState('')
+  const [mirLoading, setMirLoading] = useState(false)
+
+  // MIR discover state (for Footer button)
+  const [mirDiscoverHandler, setMirDiscoverHandler] = useState<(() => void) | null>(null)
+  const [mirDiscovering, setMirDiscovering] = useState(false)
+
+  // MIR pipeline state (for Footer dropdown)
+  const [mirPipeline, setMirPipeline] = useState<any>(null)
+  const [selectedMirPass, setSelectedMirPass] = useState<string>('')
+  const [mirPassSelectHandler, setMirPassSelectHandler] = useState<((passId: string) => void) | null>(null)
 
   // Resizable panel state
   const [leftPanelWidth, setLeftPanelWidth] = useState(40)
@@ -59,6 +81,21 @@ function App() {
     startWidthRef.current = leftPanelWidth
   }
 
+  // Get viewable MIR passes for footer dropdown
+  const getAllMirPasses = () => {
+    if (!mirPipeline) return []
+
+    // Use viewable_passes directly from pipeline
+    if (mirPipeline.viewable_passes) {
+      return mirPipeline.viewable_passes.map((p: any) => ({
+        name: p.name,
+        id: p.pass_id
+      }))
+    }
+
+    return []
+  }
+
   // Fetch architectures when llc path changes
   const fetchArchitectures = async (path: string) => {
     if (!path || path === '/path/to/llc') return
@@ -66,7 +103,21 @@ function App() {
     setLoadingTargets(true)
     try {
       const response = await fetch(`/api/targets?llc_path=${encodeURIComponent(path)}`)
-      const data = await response.json()
+
+      // Read response text once
+      const text = await response.text()
+      if (!text || text.trim().length === 0) {
+        throw new Error('Empty response from server')
+      }
+
+      // Parse JSON
+      let data
+      try {
+        data = JSON.parse(text)
+      } catch (jsonError) {
+        console.error('JSON parse error:', jsonError)
+        throw new Error(`Invalid JSON response: ${text.substring(0, 100)}`)
+      }
 
       if (response.ok && data.architectures) {
         setArchitectures(data.architectures)
@@ -90,7 +141,21 @@ function App() {
     setLoadingTargets(true)
     try {
       const response = await fetch(`/api/targets?llc_path=${encodeURIComponent(path)}&arch=${architecture}`)
-      const data = await response.json()
+
+      // Read response text once
+      const text = await response.text()
+      if (!text || text.trim().length === 0) {
+        throw new Error('Empty response from server')
+      }
+
+      // Parse JSON
+      let data
+      try {
+        data = JSON.parse(text)
+      } catch (jsonError) {
+        console.error('JSON parse error:', jsonError)
+        throw new Error(`Invalid JSON response: ${text.substring(0, 100)}`)
+      }
 
       if (response.ok && data.cpus) {
         setCpus(data.cpus)
@@ -135,17 +200,40 @@ function App() {
     }])
 
     try {
+      const requestBody: any = {
+        ir_code: irCode,
+        stage: stage,
+        llc_path: llcPath.trim(),
+        arch: arch,
+        mcpu: cpu
+      }
+
+      // Add compare_stage if compare mode is enabled
+      if (compareEnabled) {
+        requestBody.compare_stage = compareStage
+      }
+
       const response = await fetch('/api/compile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ir_code: irCode,
-          stage: stage,
-          llc_path: llcPath.trim()
-        })
+        body: JSON.stringify(requestBody)
       })
 
-      const data = await response.json()
+      // Read response text once
+      const text = await response.text()
+      if (!text || text.trim().length === 0) {
+        throw new Error('Empty response from server')
+      }
+
+      // Parse JSON
+      let data
+      try {
+        data = JSON.parse(text)
+      } catch (jsonError) {
+        console.error('JSON parse error:', jsonError)
+        console.error('Response text:', text.substring(0, 500))
+        throw new Error(`Invalid JSON response: ${text.substring(0, 100)}`)
+      }
 
       // Update terminal output (from both success and error responses)
       if (data.terminal_output) {
@@ -156,6 +244,18 @@ function App() {
       if (response.ok) {
         setNodes(data.nodes || [])
         setEdges(data.edges || [])
+
+        // Update compare data if available
+        if (data.compare_nodes && data.compare_edges) {
+          setCompareNodes(data.compare_nodes)
+          setCompareEdges(data.compare_edges)
+          setComparison(data.comparison)
+        } else {
+          // Clear compare data if not in compare mode
+          setCompareNodes([])
+          setCompareEdges([])
+          setComparison(null)
+        }
       }
     } catch (error) {
       console.error('Compile error:', error)
@@ -169,61 +269,142 @@ function App() {
     }
   }
 
+  const handleViewMIR = async () => {
+    if (!irCode.trim()) {
+      alert('Please paste LLVM IR code first')
+      return
+    }
+
+    setMirLoading(true)
+    try {
+      const response = await fetch('/api/generate_mir', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ir_code: irCode,
+          llc_path: llcPath.trim(),
+          arch: arch,
+          mcpu: cpu
+        })
+      })
+
+      // Read response text once
+      const text = await response.text()
+      if (!text || text.trim().length === 0) {
+        throw new Error('Empty response from server')
+      }
+
+      // Parse JSON
+      let data
+      try {
+        data = JSON.parse(text)
+      } catch (jsonError) {
+        console.error('JSON parse error:', jsonError)
+        console.error('Response text:', text.substring(0, 500))
+        throw new Error(`Invalid JSON response: ${text.substring(0, 100)}`)
+      }
+
+      if (data.success) {
+        setMirContent(data.mir)
+        setShowMIRModal(true)
+      } else {
+        alert(`Failed to generate MIR: ${data.error}`)
+      }
+    } catch (error) {
+      console.error('Error generating MIR:', error)
+      alert('Failed to generate MIR')
+    } finally {
+      setMirLoading(false)
+    }
+  }
+
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Header with Tabs */}
       <Header activeTab={activeTab} onTabChange={setActiveTab} />
 
-      {/* 2-Panel Layout */}
+      {/* Main Content Area */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden', backgroundColor: '#000000', position: 'relative' }}>
-        {/* Left Panel - Input */}
-        <div style={{
-          width: `${leftPanelWidth}%`,
-          backgroundColor: '#0a0a0a',
-          overflow: 'auto',
-          position: 'relative'
-        }}>
-          <InputPanel
-            value={irCode}
-            onChange={setIrCode}
-            terminalOutput={terminalOutput}
-            isRunning={loading}
-          />
-
-          {/* Resize Handle */}
-          <div
-            onMouseDown={handleResizeStart}
-            className="group"
-            style={{
-              position: 'absolute',
-              top: 0,
-              right: 0,
-              width: '4px',
-              height: '100%',
-              cursor: 'ew-resize',
-              zIndex: 1000
-            }}
-          >
-            <div className="w-0.5 h-full bg-transparent group-hover:bg-[#18a018] transition-colors ml-[1.75px]" />
-          </div>
-        </div>
-
-        {/* Right Panel - Graph */}
-        <div style={{ width: `${100 - leftPanelWidth}%`, position: 'relative', backgroundColor: '#0a0a0a' }}>
-          {loading && (
+        {/* SelectionDAG: 2-panel layout (Input + Graph) */}
+        {activeTab === 'selectiondag' && (
+          <>
+            {/* Left Panel - Input */}
             <div style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              fontSize: '20px',
-              color: '#18a018'
+              width: `${leftPanelWidth}%`,
+              backgroundColor: '#0a0a0a',
+              overflow: 'auto',
+              position: 'relative'
             }}>
-              Running...
+              <InputPanel
+                value={irCode}
+                onChange={setIrCode}
+                terminalOutput={terminalOutput}
+                isRunning={loading}
+              />
+
+              {/* Resize Handle */}
+              <div
+                onMouseDown={handleResizeStart}
+                className="group"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  right: 0,
+                  width: '4px',
+                  height: '100%',
+                  cursor: 'ew-resize',
+                  zIndex: 1000
+                }}
+              >
+                <div className="w-0.5 h-full bg-transparent group-hover:bg-[#18a018] transition-colors ml-[1.75px]" />
+              </div>
             </div>
-          )}
-          <SelectionDAGViewer nodes={nodes} edges={edges} stage={stage} />
-        </div>
+
+            {/* Right Panel - Graph */}
+            <div style={{ width: `${100 - leftPanelWidth}%`, position: 'relative', backgroundColor: '#0a0a0a' }}>
+              {loading && (
+                <div style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  fontSize: '20px',
+                  color: '#18a018'
+                }}>
+                  Running...
+                </div>
+              )}
+              <SelectionDAGViewer
+                nodes={nodes}
+                edges={edges}
+                stage={stage}
+                compareNodes={compareNodes}
+                compareEdges={compareEdges}
+                comparison={comparison}
+              />
+            </div>
+          </>
+        )}
+
+        {/* MIR: Full-width viewer (handles its own layout internally) */}
+        {activeTab === 'mir' && (
+          <MIRViewer
+            irCode={irCode}
+            llcPath={llcPath}
+            arch={arch}
+            mcpu={cpu}
+            onIRCodeChange={setIrCode}
+            terminalOutput={terminalOutput}
+            onTerminalUpdate={setTerminalOutput}
+            onDiscoverPassesChange={(handler, isLoading) => {
+              setMirDiscoverHandler(() => handler)
+              setMirDiscovering(isLoading)
+            }}
+            onPipelineChange={setMirPipeline}
+            onSelectedPassChange={(passId) => setSelectedMirPass(passId || '')}
+            onPassSelectHandlerChange={(handler) => setMirPassSelectHandler(() => handler)}
+          />
+        )}
       </div>
 
       {/* Footer */}
@@ -238,8 +419,32 @@ function App() {
         onCpuChange={setCpu}
         stage={stage}
         onStageChange={setStage}
+        compareEnabled={compareEnabled}
+        onCompareEnabledChange={setCompareEnabled}
+        compareStage={compareStage}
+        onCompareStageChange={setCompareStage}
         onRun={handleRun}
         isLoading={loading || loadingTargets}
+        onViewMIR={handleViewMIR}
+        isMIRLoading={mirLoading}
+        mode={activeTab as 'selectiondag' | 'mir'}
+        onDiscoverPasses={mirDiscoverHandler || undefined}
+        isDiscovering={mirDiscovering}
+        mirPasses={getAllMirPasses()}
+        selectedMirPass={selectedMirPass}
+        onMirPassChange={(passId) => {
+          if (mirPassSelectHandler) {
+            mirPassSelectHandler(passId)
+          }
+        }}
+      />
+
+      {/* MIR Modal */}
+      <MIRModal
+        isOpen={showMIRModal}
+        onClose={() => setShowMIRModal(false)}
+        mirContent={mirContent}
+        filename="output.mir"
       />
     </div>
   )
