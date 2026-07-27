@@ -8,18 +8,21 @@ from lib.parser import get_opcodes
 def generate_comparison(nodes1, edges1, stage1_name, nodes2, edges2, stage2_name):
     """
     Compare two DAG stages and return diff analysis.
+
+    stage1 = primary stage (shown on top)
+    stage2 = compare stage (shown on bottom)
     """
     opcodes1 = get_opcodes(nodes1)
     opcodes2 = get_opcodes(nodes2)
 
-    # Operations added in stage1 (not in stage2)
+    # Operations in stage1 but not in stage2
     added = sorted(list(opcodes1 - opcodes2))
-    # Operations removed in stage1 (were in stage2)
+    # Operations in stage2 but not in stage1
     removed = sorted(list(opcodes2 - opcodes1))
 
     return {
-        'added_opcodes': added,
-        'removed_opcodes': removed,
+        'added_opcodes': added,    # In stage1, not in stage2 (will be removed going stage1→stage2)
+        'removed_opcodes': removed,  # In stage2, not in stage1 (will be added going stage1→stage2)
         'node_count_change': len(nodes1) - len(nodes2),
         'edge_count_change': len(edges1) - len(edges2),
         'stage1_name': stage1_name,
