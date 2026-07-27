@@ -8,5 +8,79 @@ import argparse
 import http.server
 import socketserver
 import sys
+import os
+import shutil
 from pathlib import Path
 
+class DagLensHandler(http.server.SimpleHTTPRequestHandler):
+    """Cusstom HTTP handler to serve viwer files"""
+
+    def __init__(self, *args, svg_file=None, **kwargs):
+        self.svg_file = svg_file
+        super().__init__(*args, **kwargs)
+
+def main():
+    # Parse command line args
+    parser = argparse.ArgumentParser(
+        description='DagLens - Interactive SelectionDAG viewer'
+    )
+
+    parser.add_argument(
+        'svg_file',
+        type=str,
+        help='Path to SVG file to view'
+    )
+
+    parser.add_argument(
+        '-p', '--port',
+        type=int,
+        default=8000,
+        help='Port to run server on (default: 8000)'
+    )
+
+    args = parser.parse_args()
+
+    # Validate svg file exists
+    svg_file_path = Path(args.svg_file)
+    if not svg_file_path.exists():
+        print(f"Error: File not found: {args.svg_file}", file=sys.stderr)
+        sys.exit(1)
+    if not svg_file_path.exists():
+        print(f"Error: Not a file: {args.svg_file}", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"Loading SVG: {svg_file_path.absolute()}")
+
+    # Get Paths
+    script_dir = Path(__file__).parent
+    viewer_dir = script_dir / 'viewer'
+
+    # Copy SVG to viewer directory so it can be served
+    target_svg = viewer_dir / 'current.svg'
+    shutil.copy(svg_file_path, target_svg)
+    print(f"Copied to: {target_svg}")
+
+    os.chdir(viewer_dir)
+
+    # Start Server
+    PORT = args.port
+    Handler = lambda *args, **kwargs: DagLensHandler(*args, svg_file=svg_file_path, **kwargs)
+
+    # Allow port reuse (fixes "Address already in use" error)
+    socketserver.TCPServer.allow_reuse_address = True
+
+    with socketserver.TCPServer(("0.0.0.0", PORT), Handler) as httpd:
+        print(f"\n{'='*60}")
+        print(f"DagLens server running at: http://localhost:{PORT}")
+        print(f"{'='*60}")
+        print(f"\nOpen this URL in your browser (or use SSH tunnel)")
+        print(f"Press Ctrl+C to stop\n")
+
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            print("\n\nShutting down server...")
+            sys.exit(0)
+
+if __name__ == '__main__':
+    main()
