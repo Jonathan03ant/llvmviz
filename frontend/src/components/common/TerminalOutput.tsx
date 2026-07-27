@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react'
 interface TerminalOutputProps {
   output: TerminalLine[]
   isRunning: boolean
+  alwaysExpanded?: boolean
 }
 
 export interface TerminalLine {
@@ -11,7 +12,7 @@ export interface TerminalLine {
   timestamp?: string
 }
 
-export function TerminalOutput({ output, isRunning }: TerminalOutputProps) {
+export function TerminalOutput({ output, isRunning, alwaysExpanded = false }: TerminalOutputProps) {
   const [isExpanded, setIsExpanded] = useState(true)
   const [height, setHeight] = useState(400)
   const [isDragging, setIsDragging] = useState(false)
@@ -74,9 +75,9 @@ export function TerminalOutput({ output, isRunning }: TerminalOutputProps) {
   }
 
   return (
-    <div className="border-t border-[#1a1a1a] relative">
-      {/* Resize handle */}
-      {isExpanded && (
+    <div className={alwaysExpanded ? "" : "border-t border-[#1a1a1a] relative"} style={alwaysExpanded ? { height: '100%', display: 'flex', flexDirection: 'column' } : undefined}>
+      {/* Resize handle - hide when always expanded */}
+      {!alwaysExpanded && isExpanded && (
         <div
           onMouseDown={handleDragStart}
           className="absolute top-0 left-0 right-0 h-1 cursor-ns-resize z-10 group"
@@ -86,32 +87,36 @@ export function TerminalOutput({ output, isRunning }: TerminalOutputProps) {
         </div>
       )}
 
-      <div
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="bg-[#0a0a0a] px-3 py-1 flex items-center justify-between cursor-pointer hover:bg-[#111111] transition-colors"
-      >
-        <div className="flex items-center gap-2">
-          <span className="text-[#606060] text-xs">{isExpanded ? '▼' : '▶'}</span>
-          <span className="text-[#909090] text-xs">Terminal</span>
-          <div className="flex items-center gap-1.5">
-            {getStatusIcon()}
-            <span className={`text-xs ${hasError ? 'text-[#ff4444]' : hasSuccess ? 'text-[#18a018]' : 'text-[#606060]'}`}>
-              {getStatusText()}
-            </span>
+      {/* Header - hide when always expanded */}
+      {!alwaysExpanded && (
+        <div
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="bg-[#0a0a0a] px-3 py-1 flex items-center justify-between cursor-pointer hover:bg-[#111111] transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-[#606060] text-xs">{isExpanded ? '▼' : '▶'}</span>
+            <span className="text-[#909090] text-xs">Terminal</span>
+            <div className="flex items-center gap-1.5">
+              {getStatusIcon()}
+              <span className={`text-xs ${hasError ? 'text-[#ff4444]' : hasSuccess ? 'text-[#18a018]' : 'text-[#606060]'}`}>
+                {getStatusText()}
+              </span>
+            </div>
           </div>
+          <span className="text-[#606060] text-xs">{output.length} lines</span>
         </div>
-        <span className="text-[#606060] text-xs">{output.length} lines</span>
-      </div>
+      )}
 
-      {isExpanded && (
+      {(isExpanded || alwaysExpanded) && (
         <div
           ref={terminalRef}
           className="bg-[#000000] px-2 py-1.5 overflow-y-auto text-left"
           style={{
             fontFamily: 'JetBrains Mono, monospace',
             fontSize: '11px',
-            height: `${height}px`,
+            height: alwaysExpanded ? '100%' : `${height}px`,
             lineHeight: '1.4',
+            flex: alwaysExpanded ? 1 : undefined
           }}
         >
           {output.length === 0 ? (
