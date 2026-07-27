@@ -4,6 +4,6 @@
  */
 
 export { SelectionDAGViewer } from './SelectionDAGViewer'
+export { MIRViewer } from './MIRViewer'
 // export { IRPassViewer } from './IRPassViewer'      // Future
-// export { MIRViewer } from './MIRViewer'            // Future
 // export { AssemblyViewer } from './AssemblyViewer'  // Future
