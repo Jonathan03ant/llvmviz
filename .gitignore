@@ -1,0 +1,76 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Backend files (don't track)
+backend/LICENSE
+
+# Virtual environments
+backend/venv/
+venv/
+env/
+ENV/
+
+# Node.js / Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.vite/
+frontend/.cache/
+
+# Frontend config files - Keep these for deployment!
+# Only ignore build artifacts and node_modules above
+
+# Frontend documentation (optional - keep for reference)
+# frontend/FRONTEND_GUIDE.md
+# frontend/README.md
+
+# Test files
+test/
+
+# Old Phase 1 implementation (replaced by React frontend)
+viewer/
+daglens
+
+# Personal notes
+next.txt
+
+# Documentation (don't track)
+README.md
+
+# Root .gitignore (don't track itself)
+.gitignore
+
+# Launcher script
+run.sh
+
+# Temporary files
+*.tmp
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Build outputs
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment
+.env
+.env.local
