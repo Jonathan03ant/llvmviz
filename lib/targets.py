@@ -61,6 +61,10 @@ def get_cpus(llc_path: str, arch: str):
         cpus = []
 
         for line in output.split('\n'):
+            # Stop when we hit the features section
+            if 'Available features' in line:
+                break
+
             match = re.match(r'\s+(\S+)\s+-\s+(.+)', line)
             if match:
                 cpus.append({
