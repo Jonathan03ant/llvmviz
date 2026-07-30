@@ -406,24 +406,26 @@ function App() {
                 top: '50%',
                 transform: 'translateY(-50%)',
                 zIndex: 1001,
-                backgroundColor: '#000000',
-                border: '1px solid rgba(24, 160, 24, 0.3)',
-                color: '#e0e0e0',
-                padding: '8px 4px',
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                backdropFilter: 'blur(10px)',
+                border: 'none',
+                color: '#808080',
+                padding: '12px 2px',
                 cursor: 'pointer',
-                fontSize: '14px',
-                fontFamily: 'JetBrains Mono, monospace',
-                transition: 'all 0.2s',
-                borderRadius: '0 2px 2px 0',
-                borderLeft: 'none'
+                fontSize: '12px',
+                fontFamily: 'Inter, sans-serif',
+                transition: 'all 0.2s ease',
+                borderRadius: '0 6px 6px 0',
+                boxShadow: '2px 0 8px rgba(0, 0, 0, 0.3)',
+                opacity: 0.6
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.color = '#18a018'
-                e.currentTarget.style.borderColor = '#18a018'
+                e.currentTarget.style.opacity = '1'
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.color = '#e0e0e0'
-                e.currentTarget.style.borderColor = 'rgba(24, 160, 24, 0.3)'
+                e.currentTarget.style.color = '#808080'
+                e.currentTarget.style.opacity = '0.6'
               }}
             >
               {isLeftPanelCollapsed ? '→' : '←'}

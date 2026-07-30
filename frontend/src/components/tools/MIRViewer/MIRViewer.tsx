@@ -60,6 +60,9 @@ export function MIRViewer({ irCode, llcPath, arch, mcpu, onIRCodeChange, termina
   const sidebarStartXRef = useRef(0)
   const sidebarStartWidthRef = useRef(0)
 
+  // Collapsible bottom panel state
+  const [isBottomPanelCollapsed, setIsBottomPanelCollapsed] = useState(false)
+
   const handleDiscoverPasses = async () => {
     if (!irCode.trim()) {
       alert('Please enter LLVM IR code first in the input panel below')
@@ -257,7 +260,8 @@ export function MIRViewer({ irCode, llcPath, arch, mcpu, onIRCodeChange, termina
       flexDirection: 'column',
       width: '100%',
       height: '100%',
-      backgroundColor: '#0a0a0a'
+      backgroundColor: '#0a0a0a',
+      position: 'relative'
     }}>
       {/* Top: Sidebar + Content */}
       <div style={{
@@ -302,20 +306,56 @@ export function MIRViewer({ irCode, llcPath, arch, mcpu, onIRCodeChange, termina
       </div>
 
       {/* Bottom: Input Panel */}
-      <div style={{
-        height: '300px',
-        minHeight: '300px',
-        borderTop: '1px solid #1a1a1a',
-        backgroundColor: '#0a0a0a'
-      }}>
-        <InputPanel
-          value={irCode}
-          onChange={onIRCodeChange}
-          terminalOutput={terminalOutput}
-          isRunning={loadingPipeline || loadingMIR}
-          layout="horizontal"
-        />
-      </div>
+      {!isBottomPanelCollapsed && (
+        <div style={{
+          height: '300px',
+          minHeight: '300px',
+          borderTop: '1px solid #1a1a1a',
+          backgroundColor: '#0a0a0a'
+        }}>
+          <InputPanel
+            value={irCode}
+            onChange={onIRCodeChange}
+            terminalOutput={terminalOutput}
+            isRunning={loadingPipeline || loadingMIR}
+            layout="horizontal"
+          />
+        </div>
+      )}
+
+      {/* Collapse/Expand Button */}
+      <button
+        onClick={() => setIsBottomPanelCollapsed(!isBottomPanelCollapsed)}
+        style={{
+          position: 'absolute',
+          bottom: isBottomPanelCollapsed ? '0' : '300px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 1001,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          backdropFilter: 'blur(10px)',
+          border: 'none',
+          color: '#808080',
+          padding: '2px 12px',
+          cursor: 'pointer',
+          fontSize: '12px',
+          fontFamily: 'Inter, sans-serif',
+          transition: 'all 0.2s ease',
+          borderRadius: '6px 6px 0 0',
+          boxShadow: '0 -2px 8px rgba(0, 0, 0, 0.3)',
+          opacity: 0.6
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.color = '#18a018'
+          e.currentTarget.style.opacity = '1'
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.color = '#808080'
+          e.currentTarget.style.opacity = '0.6'
+        }}
+      >
+        {isBottomPanelCollapsed ? '↑' : '↓'}
+      </button>
     </div>
   )
 }
