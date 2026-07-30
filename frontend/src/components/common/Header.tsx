@@ -1,5 +1,3 @@
-import { NeuralNetwork } from '../NeuralNetwork'
-
 interface HeaderProps {
   activeTab: string
   onTabChange: (tab: string) => void
@@ -16,31 +14,41 @@ const tabs = [
 export function Header({ activeTab, onTabChange }: HeaderProps) {
   return (
     <div className="bg-[#000000] border-b border-[#1a1a1a] relative overflow-hidden">
-      {/* Neural Network Background */}
-      <NeuralNetwork />
-
       {/* Top bar with branding */}
-      <div className="px-6 py-2.5 flex items-center justify-between relative z-10">
-        <div className="flex items-center gap-3">
+      <div className="px-6 py-1.5 flex items-center justify-between relative z-10">
+        <div className="flex items-center gap-1.5">
+          {/* Logo Icon */}
+          <div className="w-10 h-10 flex items-center justify-center">
+            <img
+              src="/llvm-dragon.png"
+              alt="LLVM"
+              style={{
+                width: '40px',
+                height: '40px',
+                mixBlendMode: 'lighten',
+                filter: 'brightness(1.2) contrast(1.1)',
+              }}
+            />
+          </div>
           <h1 className="text-lg font-bold text-[#18a018] tracking-tight" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
             LLVMViz
           </h1>
-          <span className="text-xs text-[#a0a0a0]" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+          <span className="text-xs text-[#a0a0a0]" style={{ fontFamily: 'Inter, sans-serif' }}>
             LLVM Visualization Suite
           </span>
         </div>
-        <div className="flex gap-4">
-          <button className="text-[#a0a0a0] hover:text-[#18a018] text-xs transition-colors" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+        <div className="flex gap-3">
+          <button className="text-[#808080] hover:text-[#18a018] text-xs transition-colors" style={{ fontFamily: 'Inter, sans-serif' }}>
             Settings
           </button>
-          <button className="text-[#a0a0a0] hover:text-[#18a018] text-xs transition-colors" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+          <button className="text-[#808080] hover:text-[#18a018] text-xs transition-colors" style={{ fontFamily: 'Inter, sans-serif' }}>
             Help
           </button>
         </div>
       </div>
 
       {/* Tab bar */}
-      <div className="px-6 flex gap-1 relative z-10" style={{ fontFamily: 'Inter, sans-serif' }}>
+      <div className="px-6 flex gap-1 relative z-10">
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -48,17 +56,17 @@ export function Header({ activeTab, onTabChange }: HeaderProps) {
             disabled={tab.disabled}
             style={{ fontFamily: 'JetBrains Mono, monospace' }}
             className={`
-              px-5 py-2.5 text-sm font-medium transition-all relative
+              px-4 py-2 text-xs font-medium transition-all relative
               ${activeTab === tab.id
-                ? 'text-[#18a018] border-b-2 border-[#18a018] bg-[#0a0a0a] shadow-[0_0_20px_rgba(24,160,24,0.1)]'
+                ? 'text-[#18a018] border-b-2 border-[#18a018] bg-[#0a0a0a] shadow-[0_0_15px_rgba(24,160,24,0.1)]'
                 : tab.disabled
-                ? 'text-[#808080] cursor-not-allowed border-b-2 border-transparent'
-                : 'text-[#c8c8c8] hover:text-[#18a018] hover:bg-[#0a0a0a]/50 border-b-2 border-transparent'
+                ? 'text-[#606060] cursor-not-allowed border-b-2 border-transparent'
+                : 'text-[#c0c0c0] hover:text-[#18a018] hover:bg-[#0a0a0a]/50 border-b-2 border-transparent'
               }
             `}
           >
             {tab.label}
-            {tab.disabled && <span className="ml-2 text-[11px] opacity-60" style={{ fontFamily: 'Inter, sans-serif' }}>(Soon)</span>}
+            {tab.disabled && <span className="ml-1.5 text-[10px] opacity-50" style={{ fontFamily: 'Inter, sans-serif' }}>(Soon)</span>}
           </button>
         ))}
       </div>
