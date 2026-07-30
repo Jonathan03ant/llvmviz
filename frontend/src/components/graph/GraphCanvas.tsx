@@ -76,7 +76,7 @@ export function GraphCanvas({ nodes, edges, onNodeClick, onEdgeClick, onPaneClic
         onPaneClick={onPaneClick}
         fitView={nodes.length > 0}
       >
-        <Background color="#18a018" gap={16} size={1} style={{ backgroundColor: '#0a0a0a' }} />
+        <Background color="#0a4a0a" gap={16} size={1} style={{ backgroundColor: '#0a0a0a' }} />
         <Controls />
       </ReactFlow>
     </div>

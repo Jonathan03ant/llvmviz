@@ -460,17 +460,18 @@ export function SelectionDAGViewer({
         )}
 
         {/* Floating Info Tabs - Top Left */}
-        <div style={{ position: 'absolute', top: '12px', left: '12px', zIndex: 10 }}>
+        <div style={{ position: 'absolute', top: '10px', left: '10px', zIndex: 10 }}>
         <div
           style={{
-            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            backgroundColor: '#000000',
             border: '1px solid rgba(24, 160, 24, 0.3)',
-            borderRadius: '3px',
-            padding: '2px 4px',
+            borderRadius: '2px',
+            padding: '4px 6px',
             display: 'flex',
-            gap: '4px',
-            fontFamily: 'JetBrains Mono, monospace',
-            fontSize: '10px'
+            gap: '6px',
+            fontFamily: 'Inter, sans-serif',
+            fontSize: '11px',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.5)'
           }}
         >
           {(['all', 'isd', 'amdgpu', 'regs'] as const).map(tab => (
@@ -478,31 +479,33 @@ export function SelectionDAGViewer({
               key={tab}
               onClick={() => setActiveTab(activeTab === tab ? null : tab)}
               style={{
-                background: activeTab === tab ? 'rgba(24, 160, 24, 0.2)' : 'transparent',
-                color: activeTab === tab ? '#18a018' : '#909090',
+                background: activeTab === tab ? '#0a0a0a' : 'transparent',
+                color: activeTab === tab ? '#18a018' : '#e0e0e0',
                 border: activeTab === tab ? '1px solid #18a018' : '1px solid transparent',
                 borderRadius: '2px',
-                padding: '3px 6px',
+                padding: '4px 8px',
                 cursor: 'pointer',
                 fontFamily: 'inherit',
                 fontSize: 'inherit',
-                fontWeight: activeTab === tab ? 'bold' : 'normal',
-                transition: 'all 0.2s'
+                fontWeight: activeTab === tab ? '500' : 'normal',
+                transition: 'all 0.15s'
               }}
               onMouseEnter={(e) => {
                 if (activeTab !== tab) {
-                  e.currentTarget.style.color = '#c8c8c8'
+                  e.currentTarget.style.color = '#ffffff'
+                  e.currentTarget.style.background = '#0a0a0a'
                 }
               }}
               onMouseLeave={(e) => {
                 if (activeTab !== tab) {
-                  e.currentTarget.style.color = '#909090'
+                  e.currentTarget.style.color = '#e0e0e0'
+                  e.currentTarget.style.background = 'transparent'
                 }
               }}
             >
               {tab === 'all' ? 'All' :
-               tab === 'isd' ? 'ISD' :
-               tab === 'amdgpu' ? 'AMD' : 'Reg'}
+               tab === 'isd' ? 'Generic ISD' :
+               tab === 'amdgpu' ? 'Target-Specific' : 'Registers'}
             </button>
           ))}
         </div>
@@ -511,18 +514,19 @@ export function SelectionDAGViewer({
         {activeTab && activeTab !== 'all' && (
           <div
             style={{
-              marginTop: '4px',
-              backgroundColor: 'rgba(0, 0, 0, 0.85)',
-              border: '1px solid rgba(24, 160, 24, 0.4)',
-              borderRadius: '3px',
-              padding: '6px 8px',
-              maxWidth: '200px',
-              maxHeight: '250px',
+              marginTop: '6px',
+              backgroundColor: '#000000',
+              border: '1px solid #1a1a1a',
+              borderRadius: '2px',
+              padding: '8px 10px',
+              maxWidth: '220px',
+              maxHeight: '280px',
               overflowY: 'auto',
               fontFamily: 'JetBrains Mono, monospace',
               fontSize: '10px',
-              lineHeight: '1.4',
-              color: '#c8c8c8'
+              lineHeight: '1.5',
+              color: '#c8c8c8',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.5)'
             }}
           >
             {activeTab === 'isd' && (() => {
@@ -531,11 +535,11 @@ export function SelectionDAGViewer({
               )).sort()
               return (
                 <div>
-                  <div style={{ color: '#18a018', fontWeight: 'bold', marginBottom: '4px' }}>
-                    ISD Operations ({opcodes.length})
+                  <div style={{ color: '#18a018', fontWeight: '600', marginBottom: '6px', fontSize: '10px', fontFamily: 'Inter, sans-serif' }}>
+                    Generic ISD Opcodes ({opcodes.length})
                   </div>
                   {opcodes.map((opcode, idx) => (
-                    <div key={idx} style={{ padding: '2px 0', borderBottom: '1px solid #1a1a1a' }}>
+                    <div key={idx} style={{ padding: '3px 0', borderBottom: idx < opcodes.length - 1 ? '1px solid #0a0a0a' : 'none', color: '#f0f0f0' }}>
                       {opcode}
                     </div>
                   ))}
@@ -548,11 +552,11 @@ export function SelectionDAGViewer({
               )).sort()
               return (
                 <div>
-                  <div style={{ color: '#18a018', fontWeight: 'bold', marginBottom: '4px' }}>
-                    AMDGPU Operations ({opcodes.length})
+                  <div style={{ color: '#18a018', fontWeight: '600', marginBottom: '6px', fontSize: '10px', fontFamily: 'Inter, sans-serif' }}>
+                    Target-Specific Opcodes ({opcodes.length})
                   </div>
                   {opcodes.map((opcode, idx) => (
-                    <div key={idx} style={{ padding: '2px 0', borderBottom: '1px solid #1a1a1a' }}>
+                    <div key={idx} style={{ padding: '3px 0', borderBottom: idx < opcodes.length - 1 ? '1px solid #0a0a0a' : 'none', color: '#f0f0f0' }}>
                       {opcode}
                     </div>
                   ))}
@@ -563,19 +567,19 @@ export function SelectionDAGViewer({
               const regs = getRegisterList(nodes)
               return (
                 <div>
-                  <div style={{ color: '#18a018', fontWeight: 'bold', marginBottom: '4px' }}>
+                  <div style={{ color: '#18a018', fontWeight: '600', marginBottom: '6px', fontSize: '10px', fontFamily: 'Inter, sans-serif' }}>
                     Physical Registers ({regs.physical.length})
                   </div>
                   {regs.physical.map((reg, idx) => (
-                    <div key={idx} style={{ padding: '2px 0', borderBottom: '1px solid #1a1a1a' }}>
+                    <div key={idx} style={{ padding: '3px 0', borderBottom: idx < regs.physical.length - 1 ? '1px solid #0a0a0a' : 'none', color: '#f0f0f0' }}>
                       {reg}
                     </div>
                   ))}
-                  <div style={{ color: '#18a018', fontWeight: 'bold', marginTop: '8px', marginBottom: '4px' }}>
+                  <div style={{ color: '#18a018', fontWeight: '600', marginTop: '10px', marginBottom: '6px', fontSize: '10px', fontFamily: 'Inter, sans-serif' }}>
                     Virtual Registers ({regs.virtual.length})
                   </div>
                   {regs.virtual.map((reg, idx) => (
-                    <div key={idx} style={{ padding: '2px 0', borderBottom: '1px solid #1a1a1a' }}>
+                    <div key={idx} style={{ padding: '3px 0', borderBottom: idx < regs.virtual.length - 1 ? '1px solid #0a0a0a' : 'none', color: '#f0f0f0' }}>
                       {reg}
                     </div>
                   ))}
@@ -633,10 +637,10 @@ export function SelectionDAGViewer({
             {stats.nodeCount} nodes, {stats.edgeCount} edges
           </div>
           <div>
-            {stats.amdgpuCount} AMDGPU, {stats.isdCount} ISD
+            {stats.isdCount} generic ISD, {stats.amdgpuCount} target-specific
           </div>
           <div>
-            vgpr: {stats.physicalCount} | virt: {stats.virtualCount}
+            phys: {stats.physicalCount} | virt: {stats.virtualCount}
           </div>
         </div>
         )}
@@ -665,47 +669,50 @@ export function SelectionDAGViewer({
           </div>
 
           {/* Floating Info Tabs - Top Left (Compare Graph) */}
-          <div style={{ position: 'absolute', top: '12px', left: '12px', zIndex: 10 }}>
+          <div style={{ position: 'absolute', top: '10px', left: '10px', zIndex: 10 }}>
             <div style={{
-              backgroundColor: 'rgba(0, 0, 0, 0.6)',
+              backgroundColor: '#000000',
               border: '1px solid rgba(24, 160, 24, 0.3)',
-              borderRadius: '3px',
-              padding: '2px 4px',
+              borderRadius: '2px',
+              padding: '4px 6px',
               display: 'flex',
-              gap: '4px',
-              fontFamily: 'JetBrains Mono, monospace',
-              fontSize: '10px'
+              gap: '6px',
+              fontFamily: 'Inter, sans-serif',
+              fontSize: '11px',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.5)'
             }}>
               {(['all', 'isd', 'amdgpu', 'regs'] as const).map(tab => (
                 <button
                   key={tab}
                   onClick={() => setCompareActiveTab(compareActiveTab === tab ? null : tab)}
                   style={{
-                    background: compareActiveTab === tab ? 'rgba(24, 160, 24, 0.2)' : 'transparent',
-                    color: compareActiveTab === tab ? '#18a018' : '#909090',
+                    background: compareActiveTab === tab ? '#0a0a0a' : 'transparent',
+                    color: compareActiveTab === tab ? '#18a018' : '#e0e0e0',
                     border: compareActiveTab === tab ? '1px solid #18a018' : '1px solid transparent',
                     borderRadius: '2px',
-                    padding: '3px 6px',
+                    padding: '4px 8px',
                     cursor: 'pointer',
                     fontFamily: 'inherit',
                     fontSize: 'inherit',
-                    fontWeight: compareActiveTab === tab ? 'bold' : 'normal',
-                    transition: 'all 0.2s'
+                    fontWeight: compareActiveTab === tab ? '500' : 'normal',
+                    transition: 'all 0.15s'
                   }}
                   onMouseEnter={(e) => {
                     if (compareActiveTab !== tab) {
-                      e.currentTarget.style.color = '#c8c8c8'
+                      e.currentTarget.style.color = '#ffffff'
+                      e.currentTarget.style.background = '#0a0a0a'
                     }
                   }}
                   onMouseLeave={(e) => {
                     if (compareActiveTab !== tab) {
-                      e.currentTarget.style.color = '#909090'
+                      e.currentTarget.style.color = '#e0e0e0'
+                      e.currentTarget.style.background = 'transparent'
                     }
                   }}
                 >
                   {tab === 'all' ? 'All' :
-                   tab === 'isd' ? 'ISD' :
-                   tab === 'amdgpu' ? 'AMD' : 'Reg'}
+                   tab === 'isd' ? 'Generic ISD' :
+                   tab === 'amdgpu' ? 'Target-Specific' : 'Registers'}
                 </button>
               ))}
             </div>
@@ -713,18 +720,19 @@ export function SelectionDAGViewer({
             {/* Info Panel for Compare Graph */}
             {compareActiveTab && compareActiveTab !== 'all' && (
               <div style={{
-                marginTop: '4px',
-                backgroundColor: 'rgba(0, 0, 0, 0.85)',
-                border: '1px solid rgba(24, 160, 24, 0.4)',
-                borderRadius: '3px',
-                padding: '6px 8px',
-                maxWidth: '200px',
-                maxHeight: '250px',
+                marginTop: '6px',
+                backgroundColor: '#000000',
+                border: '1px solid #1a1a1a',
+                borderRadius: '2px',
+                padding: '8px 10px',
+                maxWidth: '220px',
+                maxHeight: '280px',
                 overflowY: 'auto',
                 fontFamily: 'JetBrains Mono, monospace',
                 fontSize: '10px',
-                lineHeight: '1.4',
-                color: '#c8c8c8'
+                lineHeight: '1.5',
+                color: '#c8c8c8',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.5)'
               }}>
                 {compareActiveTab === 'isd' && (() => {
                   const opcodes = Array.from(new Set(
@@ -732,11 +740,11 @@ export function SelectionDAGViewer({
                   )).sort()
                   return (
                     <div>
-                      <div style={{ color: '#18a018', fontWeight: 'bold', marginBottom: '4px' }}>
-                        ISD Operations ({opcodes.length})
+                      <div style={{ color: '#18a018', fontWeight: '600', marginBottom: '6px', fontSize: '10px', fontFamily: 'Inter, sans-serif' }}>
+                        Generic ISD Opcodes ({opcodes.length})
                       </div>
                       {opcodes.map((opcode, idx) => (
-                        <div key={idx} style={{ padding: '2px 0', borderBottom: '1px solid #1a1a1a' }}>
+                        <div key={idx} style={{ padding: '3px 0', borderBottom: idx < opcodes.length - 1 ? '1px solid #0a0a0a' : 'none', color: '#c8c8c8' }}>
                           {opcode}
                         </div>
                       ))}
@@ -749,11 +757,11 @@ export function SelectionDAGViewer({
                   )).sort()
                   return (
                     <div>
-                      <div style={{ color: '#18a018', fontWeight: 'bold', marginBottom: '4px' }}>
-                        AMDGPU Operations ({opcodes.length})
+                      <div style={{ color: '#18a018', fontWeight: '600', marginBottom: '6px', fontSize: '10px', fontFamily: 'Inter, sans-serif' }}>
+                        Target-Specific Opcodes ({opcodes.length})
                       </div>
                       {opcodes.map((opcode, idx) => (
-                        <div key={idx} style={{ padding: '2px 0', borderBottom: '1px solid #1a1a1a' }}>
+                        <div key={idx} style={{ padding: '3px 0', borderBottom: idx < opcodes.length - 1 ? '1px solid #0a0a0a' : 'none', color: '#c8c8c8' }}>
                           {opcode}
                         </div>
                       ))}
@@ -764,19 +772,19 @@ export function SelectionDAGViewer({
                   const regs = getRegisterList(compareNodes)
                   return (
                     <div>
-                      <div style={{ color: '#18a018', fontWeight: 'bold', marginBottom: '4px' }}>
+                      <div style={{ color: '#18a018', fontWeight: '600', marginBottom: '6px', fontSize: '10px', fontFamily: 'Inter, sans-serif' }}>
                         Physical Registers ({regs.physical.length})
                       </div>
                       {regs.physical.map((reg, idx) => (
-                        <div key={idx} style={{ padding: '2px 0', borderBottom: '1px solid #1a1a1a' }}>
+                        <div key={idx} style={{ padding: '3px 0', borderBottom: idx < regs.physical.length - 1 ? '1px solid #0a0a0a' : 'none', color: '#c8c8c8' }}>
                           {reg}
                         </div>
                       ))}
-                      <div style={{ color: '#18a018', fontWeight: 'bold', marginTop: '8px', marginBottom: '4px' }}>
+                      <div style={{ color: '#18a018', fontWeight: '600', marginTop: '10px', marginBottom: '6px', fontSize: '10px', fontFamily: 'Inter, sans-serif' }}>
                         Virtual Registers ({regs.virtual.length})
                       </div>
                       {regs.virtual.map((reg, idx) => (
-                        <div key={idx} style={{ padding: '2px 0', borderBottom: '1px solid #1a1a1a' }}>
+                        <div key={idx} style={{ padding: '3px 0', borderBottom: idx < regs.virtual.length - 1 ? '1px solid #0a0a0a' : 'none', color: '#c8c8c8' }}>
                           {reg}
                         </div>
                       ))}
