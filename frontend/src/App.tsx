@@ -48,6 +48,7 @@ function App() {
   // Resizable panel state
   const [leftPanelWidth, setLeftPanelWidth] = useState(40)
   const [isResizing, setIsResizing] = useState(false)
+  const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false)
   const startXRef = useRef(0)
   const startWidthRef = useRef(0)
 
@@ -363,39 +364,73 @@ function App() {
         {activeTab === 'selectiondag' && (
           <>
             {/* Left Panel - Input */}
-            <div style={{
-              width: `${leftPanelWidth}%`,
-              backgroundColor: '#0a0a0a',
-              overflow: 'auto',
-              position: 'relative'
-            }}>
-              <InputPanel
-                value={irCode}
-                onChange={setIrCode}
-                terminalOutput={terminalOutput}
-                isRunning={loading}
-              />
+            {!isLeftPanelCollapsed && (
+              <div style={{
+                width: `${leftPanelWidth}%`,
+                backgroundColor: '#0a0a0a',
+                overflow: 'auto',
+                position: 'relative'
+              }}>
+                <InputPanel
+                  value={irCode}
+                  onChange={setIrCode}
+                  terminalOutput={terminalOutput}
+                  isRunning={loading}
+                />
 
-              {/* Resize Handle */}
-              <div
-                onMouseDown={handleResizeStart}
-                className="group"
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  right: 0,
-                  width: '4px',
-                  height: '100%',
-                  cursor: 'ew-resize',
-                  zIndex: 1000
-                }}
-              >
-                <div className="w-0.5 h-full bg-transparent group-hover:bg-[#18a018] transition-colors ml-[1.75px]" />
+                {/* Resize Handle */}
+                <div
+                  onMouseDown={handleResizeStart}
+                  className="group"
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    right: 0,
+                    width: '4px',
+                    height: '100%',
+                    cursor: 'ew-resize',
+                    zIndex: 1000
+                  }}
+                >
+                  <div className="w-0.5 h-full bg-transparent group-hover:bg-[#18a018] transition-colors ml-[1.75px]" />
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* Collapse/Expand Button */}
+            <button
+              onClick={() => setIsLeftPanelCollapsed(!isLeftPanelCollapsed)}
+              style={{
+                position: 'absolute',
+                left: isLeftPanelCollapsed ? '0' : `${leftPanelWidth}%`,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                zIndex: 1001,
+                backgroundColor: '#000000',
+                border: '1px solid rgba(24, 160, 24, 0.3)',
+                color: '#e0e0e0',
+                padding: '8px 4px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontFamily: 'JetBrains Mono, monospace',
+                transition: 'all 0.2s',
+                borderRadius: '0 2px 2px 0',
+                borderLeft: 'none'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = '#18a018'
+                e.currentTarget.style.borderColor = '#18a018'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = '#e0e0e0'
+                e.currentTarget.style.borderColor = 'rgba(24, 160, 24, 0.3)'
+              }}
+            >
+              {isLeftPanelCollapsed ? '→' : '←'}
+            </button>
 
             {/* Right Panel - Graph */}
-            <div style={{ width: `${100 - leftPanelWidth}%`, position: 'relative', backgroundColor: '#0a0a0a' }}>
+            <div style={{ width: isLeftPanelCollapsed ? '100%' : `${100 - leftPanelWidth}%`, position: 'relative', backgroundColor: '#0a0a0a' }}>
               {loading && (
                 <div style={{
                   position: 'absolute',
