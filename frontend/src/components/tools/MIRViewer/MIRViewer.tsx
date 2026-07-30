@@ -125,7 +125,7 @@ export function MIRViewer({ irCode, llcPath, arch, mcpu, onIRCodeChange, termina
     if (onDiscoverPassesChange) {
       onDiscoverPassesChange(handleDiscoverPasses, loadingPipeline)
     }
-  }, [loadingPipeline])
+  }, [loadingPipeline, irCode, llcPath, arch, mcpu, onDiscoverPassesChange])
 
   // Expose pipeline to parent (for Footer dropdown)
   useEffect(() => {
