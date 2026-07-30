@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { MIRPipeline, MIRPass, MIRSection } from './MIRViewer'
+import type { MIRPipeline, MIRSection } from './MIRViewer'
 
 interface MIRPassSidebarProps {
   pipeline: MIRPipeline | null
@@ -255,7 +255,7 @@ interface PassItemProps {
 
 function PassItem({
   name,
-  passId,
+  passId: _passId,
   isActive,
   onClick,
   isNested = false,
