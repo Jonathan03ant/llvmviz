@@ -3,6 +3,9 @@ import { CustomSelect } from './CustomSelect'
 interface FooterProps {
   llcPath: string
   onLlcPathChange: (path: string) => void
+  llcConfigs: Array<{id: string, name: string, description: string, path: string, default: boolean, default_arch?: string | null, default_cpu?: string | null}>
+  selectedLlcConfig: string
+  onLlcConfigChange: (configId: string) => void
   architectures: Array<{name: string, description: string}>
   arch: string
   onArchChange: (arch: string) => void
@@ -36,8 +39,11 @@ const DAG_STAGES = [
 ]
 
 export function Footer({
-  llcPath,
-  onLlcPathChange,
+  llcPath: _llcPath,
+  onLlcPathChange: _onLlcPathChange,
+  llcConfigs,
+  selectedLlcConfig,
+  onLlcConfigChange,
   architectures,
   arch,
   onArchChange,
@@ -79,19 +85,32 @@ export function Footer({
       {/* Left side - Settings display */}
       <div className="flex items-center gap-4 text-[#c8c8c8]">
         <div className="flex items-center gap-2">
-          <span className="text-[#909090]">llc:</span>
-          <input
-            type="text"
-            value={llcPath}
-            onChange={(e) => onLlcPathChange(e.target.value)}
-            placeholder="/path/to/llc"
-            className="bg-[#000000] text-[#18a018] border border-[#1a1a1a] px-2 py-1 rounded text-xs hover:border-[#18a018] focus:border-[#18a018] focus:outline-none"
-            style={{ fontFamily: 'JetBrains Mono, monospace', width: '350px' }}
-          />
+          <span className="text-[#808080]">LLC:</span>
+          <div className="flex flex-col gap-1">
+            {llcConfigs.map((config) => (
+              <label
+                key={config.id}
+                className="flex items-center gap-1.5 cursor-pointer group"
+                title={config.description}
+              >
+                <input
+                  type="radio"
+                  name="llc-config"
+                  value={config.id}
+                  checked={selectedLlcConfig === config.id}
+                  onChange={(e) => onLlcConfigChange(e.target.value)}
+                  className="w-3 h-3 cursor-pointer accent-[#18a018]"
+                />
+                <span className="text-[#c8c8c8] text-xs group-hover:text-[#18a018] transition-colors whitespace-nowrap">
+                  {config.name}
+                </span>
+              </label>
+            ))}
+          </div>
         </div>
-        <div className="w-px h-4 bg-[#1a1a1a]"></div>
-        <div className="flex items-center gap-2">
-          <span className="text-[#909090]">Arch:</span>
+        <div className="w-px h-4 bg-[#2a2a2a]"></div>
+        <div className="flex items-center gap-2.5">
+          <span className="text-[#909090] font-medium">Arch:</span>
           <CustomSelect
             value={arch}
             options={archOptions.length > 0 ? archOptions : [{ value: arch, label: arch }]}
@@ -99,9 +118,8 @@ export function Footer({
             disabled={archOptions.length === 0}
           />
         </div>
-        <div className="w-px h-4 bg-[#1a1a1a]"></div>
-        <div className="flex items-center gap-2">
-          <span className="text-[#909090]">GPU:</span>
+        <div className="flex items-center gap-2.5">
+          <span className="text-[#909090] font-medium">GPU:</span>
           <CustomSelect
             key={`cpu-${cpus.length}-${cpu}`}
             value={cpu}
@@ -114,7 +132,7 @@ export function Footer({
         {/* Common control - Stage/MIR Pass selector */}
         <div className="w-px h-4 bg-[#1a1a1a]"></div>
         <div className="flex items-center gap-2">
-          <span className="text-[#909090]">
+          <span className="text-[#808080]">
             {mode === 'selectiondag' ? 'Stage:' : 'MIR Pass:'}
           </span>
           {mode === 'selectiondag' ? (
@@ -141,11 +159,11 @@ export function Footer({
                   onChange={(e) => onCompareEnabledChange(e.target.checked)}
                   className="w-3.5 h-3.5 cursor-pointer accent-[#18a018]"
                 />
-                <span className="text-[#909090]">Compare</span>
+                <span className="text-[#808080]">Compare</span>
               </label>
               {compareEnabled && (
                 <>
-                  <span className="text-[#909090]">vs</span>
+                  <span className="text-[#808080]">vs</span>
                   <CustomSelect value={compareStage} options={DAG_STAGES} onChange={onCompareStageChange} />
                 </>
               )}

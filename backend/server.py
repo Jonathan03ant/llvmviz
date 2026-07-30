@@ -96,6 +96,44 @@ def compile_endpoint():
         ]
         return jsonify({'error': f'Server error: {str(e)}', 'terminal_output': terminal_output}), 500
 
+@app.route('/api/llc_configs', methods=['GET'])
+def get_llc_configs():
+    """
+    Returns available LLC build configurations on the server
+    """
+    # Check if running on production server or dev machine
+    import os
+    if os.path.exists('/home/jonathan/llvm-custom/llc-universal'):
+        # Production server paths
+        universal_path = '/home/jonathan/llvm-custom/llc-universal'
+        amdgpu_path = '/home/jonathan/llvm-custom/llc-debug'
+    else:
+        # Development machine paths
+        universal_path = '/utg/LLVMLearning/llvm-project/llvmviz-bin/bin/llc'
+        amdgpu_path = '/utg/TheRockDogFooding/TheRock/compiler/amd-llvm/build-debug/bin/llc'
+
+    configs = [
+        {
+            "id": "universal",
+            "name": "Universal Build",
+            "description": "LLVM 24.0.0git - All architectures",
+            "path": universal_path,
+            "default": True,
+            "default_arch": None,
+            "default_cpu": None
+        },
+        {
+            "id": "amdgpu",
+            "name": "AMD GPU Build",
+            "description": "LLVM 23.0.0git - AMDGPU only",
+            "path": amdgpu_path,
+            "default": False,
+            "default_arch": "amdgcn",
+            "default_cpu": None
+        }
+    ]
+    return jsonify({"configs": configs})
+
 @app.route('/api/targets', methods=['GET'])
 def get_targets():
     llc_path = request.args.get('llc_path')

@@ -22,11 +22,13 @@ function App() {
   const [comparison, setComparison] = useState<any>(null)
 
   // Settings - dynamic arch/CPU
-  const [llcPath, setLlcPath] = useState('/path/to/llc')
+  const [llcConfigs, setLlcConfigs] = useState<Array<{id: string, name: string, description: string, path: string, default: boolean, default_arch: string | null, default_cpu: string | null}>>([])
+  const [selectedLlcConfig, setSelectedLlcConfig] = useState('universal')
+  const [llcPath, setLlcPath] = useState('')  // Will be set by fetchLlcConfigs
   const [architectures, setArchitectures] = useState<Array<{name: string, description: string}>>([])
   const [cpus, setCpus] = useState<Array<{name: string, description: string}>>([])
-  const [arch, setArch] = useState('amdgcn')
-  const [cpu, setCpu] = useState('gfx1101')
+  const [arch, setArch] = useState('')
+  const [cpu, setCpu] = useState('')
   const [loadingTargets, setLoadingTargets] = useState(false)
 
   // MIR viewer state
@@ -81,6 +83,31 @@ function App() {
     startWidthRef.current = leftPanelWidth
   }
 
+  // Fetch LLC configs on mount
+  useEffect(() => {
+    const fetchLlcConfigs = async () => {
+      try {
+        const response = await fetch('/api/llc_configs')
+        const data = await response.json()
+        if (data.configs) {
+          setLlcConfigs(data.configs)
+          // Set default config
+          const defaultConfig = data.configs.find((c: any) => c.default)
+          if (defaultConfig) {
+            setSelectedLlcConfig(defaultConfig.id)
+            setLlcPath(defaultConfig.path)
+            // Set default arch/cpu based on config
+            setArch(defaultConfig.default_arch || '')
+            setCpu(defaultConfig.default_cpu || '')
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch LLC configs:', error)
+      }
+    }
+    fetchLlcConfigs()
+  }, [])
+
   // Get viewable MIR passes for footer dropdown
   const getAllMirPasses = () => {
     if (!mirPipeline) return []
@@ -94,6 +121,21 @@ function App() {
     }
 
     return []
+  }
+
+  // Handle LLC config change
+  const handleLlcConfigChange = (configId: string) => {
+    setSelectedLlcConfig(configId)
+    const config = llcConfigs.find(c => c.id === configId)
+    if (config) {
+      setLlcPath(config.path)
+      // Set defaults based on config
+      setArch(config.default_arch || '')
+      setCpu(config.default_cpu || '')
+      // Clear architecture/CPU lists, will be fetched when llcPath changes
+      setArchitectures([])
+      setCpus([])
+    }
   }
 
   // Fetch architectures when llc path changes
@@ -121,11 +163,7 @@ function App() {
 
       if (response.ok && data.architectures) {
         setArchitectures(data.architectures)
-        // Set default arch if available
-        if (data.architectures.length > 0 && !arch) {
-          const defaultArch = data.architectures.find((a: any) => a.name === 'amdgcn') || data.architectures[0]
-          setArch(defaultArch.name)
-        }
+        // Don't auto-select arch - let LLC config defaults handle it
       }
     } catch (error) {
       console.error('Failed to fetch architectures:', error)
@@ -159,11 +197,7 @@ function App() {
 
       if (response.ok && data.cpus) {
         setCpus(data.cpus)
-        // Set default CPU if available
-        if (data.cpus.length > 0 && !cpu) {
-          const defaultCpu = data.cpus.find((c: any) => c.name === 'gfx1101') || data.cpus[0]
-          setCpu(defaultCpu.name)
-        }
+        // Don't auto-select CPU - let LLC config defaults handle it
       }
     } catch (error) {
       console.error('Failed to fetch CPUs:', error)
@@ -411,6 +445,9 @@ function App() {
       <Footer
         llcPath={llcPath}
         onLlcPathChange={setLlcPath}
+        llcConfigs={llcConfigs}
+        selectedLlcConfig={selectedLlcConfig}
+        onLlcConfigChange={handleLlcConfigChange}
         architectures={architectures}
         arch={arch}
         onArchChange={setArch}
