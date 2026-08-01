@@ -20,6 +20,146 @@ interface MIRSection {
   line: number
 }
 
+function CompareMIRView({ tab1, tab2 }: { tab1: MIRTab, tab2: MIRTab }) {
+  const leftRef = useRef<HTMLDivElement>(null)
+  const rightRef = useRef<HTMLDivElement>(null)
+
+  const lines1 = useMemo(() => tab1.content?.split('\n') || [], [tab1.content])
+  const lines2 = useMemo(() => tab2.content?.split('\n') || [], [tab2.content])
+
+  const maxLines = Math.max(lines1.length, lines2.length)
+
+  const syncScroll = (source: 'left' | 'right') => {
+    if (source === 'left' && leftRef.current && rightRef.current) {
+      rightRef.current.scrollTop = leftRef.current.scrollTop
+    } else if (source === 'right' && leftRef.current && rightRef.current) {
+      leftRef.current.scrollTop = rightRef.current.scrollTop
+    }
+  }
+
+  const getLineStyle = (line1: string | undefined, line2: string | undefined) => {
+    if (!line1 && line2) {
+      return { backgroundColor: 'rgba(16, 185, 129, 0.15)' }
+    }
+    if (line1 && !line2) {
+      return { backgroundColor: 'rgba(239, 68, 68, 0.15)' }
+    }
+    if (line1 !== line2) {
+      return { backgroundColor: 'rgba(251, 191, 36, 0.15)' }
+    }
+    return {}
+  }
+
+  const highlightDiff = (text1: string, text2: string, side: 'left' | 'right') => {
+    const words1 = text1.split(/(\s+)/)
+    const words2 = text2.split(/(\s+)/)
+
+    const result: React.ReactNode[] = []
+    const maxWords = Math.max(words1.length, words2.length)
+
+    for (let i = 0; i < maxWords; i++) {
+      const word1 = words1[i] || ''
+      const word2 = words2[i] || ''
+
+      if (word1 === word2) {
+        result.push(<span key={i}>{side === 'left' ? word1 : word2}</span>)
+      } else {
+        if (side === 'left') {
+          if (word1 && !word2) {
+            result.push(<span key={i} style={{ backgroundColor: '#ef4444', color: '#fff', padding: '0 2px' }}>{word1}</span>)
+          } else if (word1) {
+            result.push(<span key={i} style={{ backgroundColor: '#f59e0b', color: '#fff', padding: '0 2px' }}>{word1}</span>)
+          }
+        } else {
+          if (word2 && !word1) {
+            result.push(<span key={i} style={{ backgroundColor: '#10b981', color: '#fff', padding: '0 2px' }}>{word2}</span>)
+          } else if (word2) {
+            result.push(<span key={i} style={{ backgroundColor: '#f59e0b', color: '#fff', padding: '0 2px' }}>{word2}</span>)
+          }
+        }
+      }
+    }
+
+    return <>{result}</>
+  }
+
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{
+        display: 'flex',
+        borderBottom: '1px solid #1a1a1a',
+        backgroundColor: '#0a0a0a',
+        padding: '8px 12px',
+        gap: '8px'
+      }}>
+        <div style={{ flex: 1, color: '#18a018', fontSize: '10px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>
+          {tab1.passName}
+        </div>
+        <div style={{ flex: 1, color: '#18a018', fontSize: '10px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>
+          {tab2.passName}
+        </div>
+      </div>
+
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+        <div
+          ref={leftRef}
+          onScroll={() => syncScroll('left')}
+          style={{
+            flex: 1,
+            overflow: 'auto',
+            padding: '20px',
+            fontFamily: 'JetBrains Mono, monospace',
+            fontSize: '13px',
+            lineHeight: '1.6',
+            color: '#e0e0e0',
+            backgroundColor: '#000000',
+            whiteSpace: 'pre',
+            textAlign: 'left',
+            borderRight: '1px solid #1a1a1a'
+          }}
+        >
+          {Array.from({ length: maxLines }).map((_, idx) => {
+            const line1 = lines1[idx] || ''
+            const line2 = lines2[idx] || ''
+            return (
+              <div key={idx} style={getLineStyle(line1, line2)}>
+                {line1 && line2 && line1 !== line2 ? highlightDiff(line1, line2, 'left') : (line1 || ' ')}
+              </div>
+            )
+          })}
+        </div>
+
+        <div
+          ref={rightRef}
+          onScroll={() => syncScroll('right')}
+          style={{
+            flex: 1,
+            overflow: 'auto',
+            padding: '20px',
+            fontFamily: 'JetBrains Mono, monospace',
+            fontSize: '13px',
+            lineHeight: '1.6',
+            color: '#e0e0e0',
+            backgroundColor: '#000000',
+            whiteSpace: 'pre',
+            textAlign: 'left'
+          }}
+        >
+          {Array.from({ length: maxLines }).map((_, idx) => {
+            const line1 = lines1[idx] || ''
+            const line2 = lines2[idx] || ''
+            return (
+              <div key={idx} style={getLineStyle(line1, line2)}>
+                {line1 && line2 && line1 !== line2 ? highlightDiff(line1, line2, 'right') : (line2 || ' ')}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function MIRContentView({
   tabs,
   activeTabIndex,
@@ -28,6 +168,9 @@ export function MIRContentView({
 }: MIRContentViewProps) {
   const contentRef = useRef<HTMLDivElement>(null)
   const lineNumbersRef = useRef<HTMLDivElement>(null)
+  const [compareMode, setCompareMode] = useState(false)
+  const [compareTab1, setCompareTab1] = useState<number>(-1)
+  const [compareTab2, setCompareTab2] = useState<number>(-1)
 
   const activeTab = tabs[activeTabIndex]
   const mirContent = activeTab?.content || null
@@ -168,34 +311,95 @@ export function MIRContentView({
           MIR Output
         </h2>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <select
-            onChange={(e) => {
-              const lineNumber = parseInt(e.target.value)
-              if (lineNumber > 0) {
-                scrollToLine(lineNumber)
-                e.target.value = ''
-              }
-            }}
-            style={{
-              padding: '4px 8px',
-              backgroundColor: '#1a1a1a',
-              border: '1px solid #333',
-              borderRadius: '4px',
-              color: '#808080',
-              cursor: 'pointer',
-              fontSize: '10px',
-              fontFamily: 'JetBrains Mono, monospace',
-              fontWeight: 600,
-              outline: 'none'
-            }}
-          >
-            <option value="">Go To...</option>
-            {sections.map((section, idx) => (
-              <option key={idx} value={section.line}>
-                {section.name}
-              </option>
-            ))}
-          </select>
+          {!compareMode && (
+            <>
+              <button
+                onClick={() => setCompareMode(true)}
+                disabled={tabs.length < 2}
+                style={{
+                  padding: '4px 8px',
+                  backgroundColor: tabs.length >= 2 ? '#1a1a1a' : 'transparent',
+                  border: '1px solid #333',
+                  borderRadius: '4px',
+                  color: tabs.length >= 2 ? '#808080' : '#404040',
+                  cursor: tabs.length >= 2 ? 'pointer' : 'not-allowed',
+                  fontSize: '10px',
+                  fontFamily: 'JetBrains Mono, monospace',
+                  fontWeight: 600,
+                  transition: 'color 0.15s'
+                }}
+                onMouseEnter={(e) => {
+                  if (tabs.length >= 2) {
+                    e.currentTarget.style.color = '#18a018'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (tabs.length >= 2) {
+                    e.currentTarget.style.color = '#808080'
+                  }
+                }}
+              >
+                Compare
+              </button>
+              <select
+                onChange={(e) => {
+                  const lineNumber = parseInt(e.target.value)
+                  if (lineNumber > 0) {
+                    scrollToLine(lineNumber)
+                    e.target.value = ''
+                  }
+                }}
+                style={{
+                  padding: '4px 8px',
+                  backgroundColor: '#1a1a1a',
+                  border: '1px solid #333',
+                  borderRadius: '4px',
+                  color: '#808080',
+                  cursor: 'pointer',
+                  fontSize: '10px',
+                  fontFamily: 'JetBrains Mono, monospace',
+                  fontWeight: 600,
+                  outline: 'none'
+                }}
+              >
+                <option value="">Go To...</option>
+                {sections.map((section, idx) => (
+                  <option key={idx} value={section.line}>
+                    {section.name}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
+          {compareMode && (
+            <button
+              onClick={() => {
+                setCompareMode(false)
+                setCompareTab1(-1)
+                setCompareTab2(-1)
+              }}
+              style={{
+                padding: '4px 8px',
+                backgroundColor: '#1a1a1a',
+                border: '1px solid #333',
+                borderRadius: '4px',
+                color: '#808080',
+                cursor: 'pointer',
+                fontSize: '10px',
+                fontFamily: 'JetBrains Mono, monospace',
+                fontWeight: 600,
+                transition: 'color 0.15s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = '#ef4444'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = '#808080'
+              }}
+            >
+              Exit Compare
+            </button>
+          )}
           <button
             onClick={handleCopy}
             style={{
@@ -314,6 +518,119 @@ export function MIRContentView({
         ))}
       </div>
 
+      {/* Compare Mode: Tab Selection */}
+      {compareMode && compareTab1 === -1 ? (
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '20px',
+          backgroundColor: '#0a0a0a'
+        }}>
+          <div style={{
+            color: '#18a018',
+            fontSize: '14px',
+            fontFamily: 'JetBrains Mono, monospace',
+            fontWeight: 600
+          }}>
+            Select two tabs to compare
+          </div>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            {tabs.map((tab, index) => (
+              <button
+                key={index}
+                onClick={() => setCompareTab1(index)}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#1a1a1a',
+                  border: '1px solid #333',
+                  borderRadius: '4px',
+                  color: '#808080',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontFamily: 'JetBrains Mono, monospace',
+                  fontWeight: 600,
+                  transition: 'all 0.15s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = '#18a018'
+                  e.currentTarget.style.borderColor = '#18a018'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = '#808080'
+                  e.currentTarget.style.borderColor = '#333'
+                }}
+              >
+                {tab.passName}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : compareMode && compareTab2 === -1 ? (
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '20px',
+          backgroundColor: '#0a0a0a'
+        }}>
+          <div style={{
+            color: '#18a018',
+            fontSize: '14px',
+            fontFamily: 'JetBrains Mono, monospace',
+            fontWeight: 600
+          }}>
+            Comparing: {tabs[compareTab1]?.passName}
+          </div>
+          <div style={{
+            color: '#808080',
+            fontSize: '12px',
+            fontFamily: 'JetBrains Mono, monospace'
+          }}>
+            Select second tab to compare with
+          </div>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            {tabs.map((tab, index) => index !== compareTab1 && (
+              <button
+                key={index}
+                onClick={() => setCompareTab2(index)}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#1a1a1a',
+                  border: '1px solid #333',
+                  borderRadius: '4px',
+                  color: '#808080',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontFamily: 'JetBrains Mono, monospace',
+                  fontWeight: 600,
+                  transition: 'all 0.15s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = '#18a018'
+                  e.currentTarget.style.borderColor = '#18a018'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = '#808080'
+                  e.currentTarget.style.borderColor = '#333'
+                }}
+              >
+                {tab.passName}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : compareMode && compareTab1 !== -1 && compareTab2 !== -1 ? (
+        <CompareMIRView
+          tab1={tabs[compareTab1]}
+          tab2={tabs[compareTab2]}
+        />
+      ) : (
+      <>
       {/* MIR Content with Line Numbers */}
       {loading ? (
         <div style={{
@@ -378,6 +695,8 @@ export function MIRContentView({
           ))}
         </div>
       </div>
+      )}
+      </>
       )}
     </div>
   )
