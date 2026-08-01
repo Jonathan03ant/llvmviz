@@ -295,42 +295,44 @@ export function MIRContentView({
     }}>
       {/* Header */}
       <div style={{
-        padding: '8px 12px',
+        padding: '6px 10px',
         borderBottom: '1px solid #1a1a1a',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between'
       }}>
-        <h2 style={{
+        <div style={{
           color: '#18a018',
           margin: 0,
           fontSize: '10px',
           fontWeight: '600',
-          fontFamily: 'JetBrains Mono, monospace'
+          fontFamily: 'JetBrains Mono, monospace',
+          lineHeight: '1.6',
+          textTransform: 'uppercase',
+          letterSpacing: '0.5px'
         }}>
           MIR Output
-        </h2>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+        </div>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginRight: '12px' }}>
           {!compareMode && (
             <>
-              <button
-                onClick={() => setCompareMode(true)}
-                disabled={tabs.length < 2}
+              <div
+                onClick={() => tabs.length >= 2 && setCompareMode(true)}
                 style={{
-                  padding: '4px 8px',
-                  backgroundColor: tabs.length >= 2 ? '#1a1a1a' : 'transparent',
-                  border: '1px solid #333',
-                  borderRadius: '4px',
+                  padding: '4px 10px',
+                  backgroundColor: 'transparent',
+                  border: 'none',
                   color: tabs.length >= 2 ? '#808080' : '#404040',
                   cursor: tabs.length >= 2 ? 'pointer' : 'not-allowed',
-                  fontSize: '10px',
-                  fontFamily: 'JetBrains Mono, monospace',
-                  fontWeight: 600,
-                  transition: 'color 0.15s'
+                  fontSize: '11px',
+                  fontFamily: 'Inter, sans-serif',
+                  fontWeight: 500,
+                  transition: 'color 0.15s',
+                  userSelect: 'none'
                 }}
                 onMouseEnter={(e) => {
                   if (tabs.length >= 2) {
-                    e.currentTarget.style.color = '#18a018'
+                    e.currentTarget.style.color = '#e0e0e0'
                   }
                 }}
                 onMouseLeave={(e) => {
@@ -340,7 +342,7 @@ export function MIRContentView({
                 }}
               >
                 Compare
-              </button>
+              </div>
               <select
                 onChange={(e) => {
                   const lineNumber = parseInt(e.target.value)
@@ -350,16 +352,22 @@ export function MIRContentView({
                   }
                 }}
                 style={{
-                  padding: '4px 8px',
-                  backgroundColor: '#1a1a1a',
-                  border: '1px solid #333',
-                  borderRadius: '4px',
+                  padding: '4px 10px',
+                  backgroundColor: 'transparent',
+                  border: 'none',
                   color: '#808080',
                   cursor: 'pointer',
-                  fontSize: '10px',
-                  fontFamily: 'JetBrains Mono, monospace',
-                  fontWeight: 600,
-                  outline: 'none'
+                  fontSize: '11px',
+                  fontFamily: 'Inter, sans-serif',
+                  fontWeight: 500,
+                  outline: 'none',
+                  transition: 'color 0.15s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = '#e0e0e0'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = '#808080'
                 }}
               >
                 <option value="">Go To...</option>
@@ -372,23 +380,23 @@ export function MIRContentView({
             </>
           )}
           {compareMode && (
-            <button
+            <div
               onClick={() => {
                 setCompareMode(false)
                 setCompareTab1(-1)
                 setCompareTab2(-1)
               }}
               style={{
-                padding: '4px 8px',
-                backgroundColor: '#1a1a1a',
-                border: '1px solid #333',
-                borderRadius: '4px',
+                padding: '4px 10px',
+                backgroundColor: 'transparent',
+                border: 'none',
                 color: '#808080',
                 cursor: 'pointer',
-                fontSize: '10px',
-                fontFamily: 'JetBrains Mono, monospace',
-                fontWeight: 600,
-                transition: 'color 0.15s'
+                fontSize: '11px',
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 500,
+                transition: 'color 0.15s',
+                userSelect: 'none'
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.color = '#ef4444'
@@ -398,51 +406,69 @@ export function MIRContentView({
               }}
             >
               Exit Compare
-            </button>
+            </div>
           )}
+          <div style={{ width: '1px', height: '20px', backgroundColor: '#333' }} />
           <button
             onClick={handleCopy}
+            title="Copy MIR"
             style={{
-              padding: 0,
+              padding: '6px',
               backgroundColor: 'transparent',
               border: 'none',
               color: '#808080',
               cursor: 'pointer',
-              fontSize: '10px',
-              fontFamily: 'JetBrains Mono, monospace',
-              fontWeight: 600,
-              transition: 'color 0.15s'
+              fontSize: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'color 0.15s',
+              borderRadius: '4px'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.color = '#18a018'
+              e.currentTarget.style.color = '#e0e0e0'
+              e.currentTarget.style.backgroundColor = '#1a1a1a'
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.color = '#808080'
+              e.currentTarget.style.backgroundColor = 'transparent'
             }}
           >
-            Copy
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
           </button>
           <button
             onClick={handleDownload}
+            title="Download MIR"
             style={{
-              padding: 0,
+              padding: '6px',
               backgroundColor: 'transparent',
               border: 'none',
               color: '#808080',
               cursor: 'pointer',
-              fontSize: '10px',
-              fontFamily: 'JetBrains Mono, monospace',
-              fontWeight: 600,
-              transition: 'color 0.15s'
+              fontSize: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'color 0.15s',
+              borderRadius: '4px'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.color = '#18a018'
+              e.currentTarget.style.color = '#e0e0e0'
+              e.currentTarget.style.backgroundColor = '#1a1a1a'
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.color = '#808080'
+              e.currentTarget.style.backgroundColor = 'transparent'
             }}
           >
-            Download
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
           </button>
         </div>
       </div>

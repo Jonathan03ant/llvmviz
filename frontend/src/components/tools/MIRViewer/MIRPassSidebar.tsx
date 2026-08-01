@@ -62,12 +62,12 @@ export function MIRPassSidebar({
       }}>
         <div style={{
           color: '#18a018',
-          fontSize: '9px',
+          fontSize: '10px',
           fontWeight: 600,
           fontFamily: 'JetBrains Mono, monospace',
           display: 'flex',
           alignItems: 'center',
-          gap: '4px',
+          gap: '6px',
           textTransform: 'uppercase',
           letterSpacing: '0.5px'
         }}>
@@ -212,7 +212,7 @@ function Section({ title, isExpanded, onToggle, children }: SectionProps) {
           padding: '6px 10px',
           backgroundColor: 'transparent',
           border: 'none',
-          color: '#a0a0a0',
+          color: '#d0d0d0',
           fontSize: '10px',
           fontWeight: 500,
           textAlign: 'left',
@@ -223,11 +223,11 @@ function Section({ title, isExpanded, onToggle, children }: SectionProps) {
           fontFamily: 'JetBrains Mono, monospace',
           transition: 'all 0.15s'
         }}
-        onMouseEnter={(e) => e.currentTarget.style.color = '#c8c8c8'}
-        onMouseLeave={(e) => e.currentTarget.style.color = '#a0a0a0'}
+        onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'}
+        onMouseLeave={(e) => e.currentTarget.style.color = '#d0d0d0'}
       >
         <span>{title}</span>
-        <span style={{ fontSize: '8px', color: '#606060' }}>
+        <span style={{ fontSize: '8px', color: '#909090' }}>
           {isExpanded ? '▼' : '▶'}
         </span>
       </button>
@@ -291,7 +291,7 @@ function PassItem({
         backgroundColor: isActive ? 'rgba(24, 160, 24, 0.15)' : 'transparent',
         border: 'none',
         borderLeft: isActive ? `2px solid ${iconColor}` : '2px solid transparent',
-        color: isDisabled ? '#303030' : (isActive ? iconColor : '#707070'),
+        color: isDisabled ? '#808080' : (isActive ? iconColor : '#b0b0b0'),
         fontSize: '10px',
         textAlign: 'left',
         cursor: isDisabled ? 'not-allowed' : 'pointer',
@@ -300,18 +300,18 @@ function PassItem({
         display: 'flex',
         alignItems: 'center',
         gap: '6px',
-        opacity: isDisabled ? 0.4 : 1
+        opacity: 1
       }}
       onMouseEnter={(e) => {
         if (!isActive && !isDisabled) {
           e.currentTarget.style.backgroundColor = 'rgba(24, 160, 24, 0.08)'
-          e.currentTarget.style.color = '#a0a0a0'
+          e.currentTarget.style.color = '#e0e0e0'
         }
       }}
       onMouseLeave={(e) => {
         if (!isActive && !isDisabled) {
           e.currentTarget.style.backgroundColor = 'transparent'
-          e.currentTarget.style.color = '#707070'
+          e.currentTarget.style.color = '#b0b0b0'
         }
       }}
     >
