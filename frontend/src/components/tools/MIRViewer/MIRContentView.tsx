@@ -171,6 +171,12 @@ export function MIRContentView({
   const [compareMode, setCompareMode] = useState(false)
   const [compareTab1, setCompareTab1] = useState<number>(-1)
   const [compareTab2, setCompareTab2] = useState<number>(-1)
+  const [showGoToDropdown, setShowGoToDropdown] = useState(false)
+  const [showCompareTab1Dropdown, setShowCompareTab1Dropdown] = useState(false)
+  const [showCompareTab2Dropdown, setShowCompareTab2Dropdown] = useState(false)
+  const goToRef = useRef<HTMLDivElement>(null)
+  const compareTab1Ref = useRef<HTMLDivElement>(null)
+  const compareTab2Ref = useRef<HTMLDivElement>(null)
 
   const activeTab = tabs[activeTabIndex]
   const mirContent = activeTab?.content || null
@@ -233,6 +239,26 @@ export function MIRContentView({
       lineNumbersRef.current.scrollTop = contentRef.current.scrollTop
     }
   }
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (goToRef.current && !goToRef.current.contains(event.target as Node)) {
+        setShowGoToDropdown(false)
+      }
+      if (compareTab1Ref.current && !compareTab1Ref.current.contains(event.target as Node)) {
+        setShowCompareTab1Dropdown(false)
+      }
+      if (compareTab2Ref.current && !compareTab2Ref.current.contains(event.target as Node)) {
+        setShowCompareTab2Dropdown(false)
+      }
+    }
+
+    if (showGoToDropdown || showCompareTab1Dropdown || showCompareTab2Dropdown) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showGoToDropdown, showCompareTab1Dropdown, showCompareTab2Dropdown])
   const handleCopy = () => {
     if (mirContent) {
       navigator.clipboard.writeText(mirContent).then(() => {
@@ -307,106 +333,291 @@ export function MIRContentView({
           fontSize: '10px',
           fontWeight: '600',
           fontFamily: 'JetBrains Mono, monospace',
-          lineHeight: '1.6',
+          lineHeight: '1',
           textTransform: 'uppercase',
           letterSpacing: '0.5px'
         }}>
           MIR Output
         </div>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginRight: '12px' }}>
-          {!compareMode && (
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          {compareMode ? (
+            <>
+              <div ref={compareTab1Ref} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <button
+                  onClick={() => setShowCompareTab1Dropdown(!showCompareTab1Dropdown)}
+                  style={{
+                    padding: '2px 8px',
+                    backgroundColor: '#000000',
+                    border: '1px solid #1a1a1a',
+                    borderRadius: '2px',
+                    color: '#18a018',
+                    cursor: 'pointer',
+                    fontSize: '11px',
+                    fontFamily: 'JetBrains Mono, monospace',
+                    outline: 'none',
+                    width: '150px',
+                    textAlign: 'left',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}
+                >
+                  <span>{compareTab1 >= 0 ? tabs[compareTab1]?.passName : 'Select tab 1...'}</span>
+                  <span style={{ fontSize: '8px' }}>▼</span>
+                </button>
+                {showCompareTab1Dropdown && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    marginTop: '2px',
+                    backgroundColor: '#0a0a0a',
+                    border: '1px solid #1a1a1a',
+                    borderRadius: '2px',
+                    width: '150px',
+                    maxHeight: '300px',
+                    overflowY: 'auto',
+                    zIndex: 1000
+                  }}>
+                    {tabs.map((tab, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => {
+                          setCompareTab1(idx)
+                          setShowCompareTab1Dropdown(false)
+                        }}
+                        style={{
+                          padding: '2px 8px',
+                          color: '#18a018',
+                          cursor: 'pointer',
+                          fontSize: '11px',
+                          fontFamily: 'JetBrains Mono, monospace',
+                          transition: 'all 0.15s',
+                          textAlign: 'left',
+                          lineHeight: '1.4',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#111111'
+                          e.currentTarget.style.color = '#c8c8c8'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'transparent'
+                          e.currentTarget.style.color = '#18a018'
+                        }}
+                      >
+                        {tab.passName}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <span style={{ color: '#606060', fontSize: '11px', fontWeight: 600 }}>vs</span>
+              <div ref={compareTab2Ref} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <button
+                  onClick={() => setShowCompareTab2Dropdown(!showCompareTab2Dropdown)}
+                  style={{
+                    padding: '2px 8px',
+                    backgroundColor: '#000000',
+                    border: '1px solid #1a1a1a',
+                    borderRadius: '2px',
+                    color: '#18a018',
+                    cursor: 'pointer',
+                    fontSize: '11px',
+                    fontFamily: 'JetBrains Mono, monospace',
+                    outline: 'none',
+                    width: '150px',
+                    textAlign: 'left',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}
+                >
+                  <span>{compareTab2 >= 0 ? tabs[compareTab2]?.passName : 'Select tab 2...'}</span>
+                  <span style={{ fontSize: '8px' }}>▼</span>
+                </button>
+                {showCompareTab2Dropdown && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    marginTop: '2px',
+                    backgroundColor: '#0a0a0a',
+                    border: '1px solid #1a1a1a',
+                    borderRadius: '2px',
+                    width: '150px',
+                    maxHeight: '300px',
+                    overflowY: 'auto',
+                    zIndex: 1000
+                  }}>
+                    {tabs.map((tab, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => {
+                          setCompareTab2(idx)
+                          setShowCompareTab2Dropdown(false)
+                        }}
+                        style={{
+                          padding: '2px 8px',
+                          color: '#18a018',
+                          cursor: 'pointer',
+                          fontSize: '11px',
+                          fontFamily: 'JetBrains Mono, monospace',
+                          transition: 'all 0.15s',
+                          textAlign: 'left',
+                          lineHeight: '1.4',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#111111'
+                          e.currentTarget.style.color = '#c8c8c8'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'transparent'
+                          e.currentTarget.style.color = '#18a018'
+                        }}
+                      >
+                        {tab.passName}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div
+                onClick={() => {
+                  setCompareMode(false)
+                  setCompareTab1(-1)
+                  setCompareTab2(-1)
+                }}
+                style={{
+                  padding: '0 10px',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  color: '#c8c8c8',
+                  cursor: 'pointer',
+                  fontSize: '10px',
+                  fontFamily: 'JetBrains Mono, monospace',
+                  fontWeight: 600,
+                  transition: 'color 0.15s',
+                  userSelect: 'none',
+                  lineHeight: '1',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'}
+                onMouseLeave={(e) => e.currentTarget.style.color = '#c8c8c8'}
+              >
+                Exit
+              </div>
+            </>
+          ) : (
             <>
               <div
                 onClick={() => tabs.length >= 2 && setCompareMode(true)}
                 style={{
-                  padding: '4px 10px',
+                  padding: '0 10px',
                   backgroundColor: 'transparent',
                   border: 'none',
-                  color: tabs.length >= 2 ? '#808080' : '#404040',
+                  color: tabs.length >= 2 ? '#c8c8c8' : '#404040',
                   cursor: tabs.length >= 2 ? 'pointer' : 'not-allowed',
-                  fontSize: '11px',
-                  fontFamily: 'Inter, sans-serif',
-                  fontWeight: 500,
+                  fontSize: '10px',
+                  fontFamily: 'JetBrains Mono, monospace',
+                  fontWeight: 600,
                   transition: 'color 0.15s',
-                  userSelect: 'none'
+                  userSelect: 'none',
+                  lineHeight: '1',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
                 }}
                 onMouseEnter={(e) => {
                   if (tabs.length >= 2) {
-                    e.currentTarget.style.color = '#e0e0e0'
+                    e.currentTarget.style.color = '#ffffff'
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (tabs.length >= 2) {
-                    e.currentTarget.style.color = '#808080'
+                    e.currentTarget.style.color = '#c8c8c8'
                   }
                 }}
               >
                 Compare
               </div>
-              <select
-                onChange={(e) => {
-                  const lineNumber = parseInt(e.target.value)
-                  if (lineNumber > 0) {
-                    scrollToLine(lineNumber)
-                    e.target.value = ''
-                  }
-                }}
-                style={{
-                  padding: '4px 10px',
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  color: '#808080',
-                  cursor: 'pointer',
-                  fontSize: '11px',
-                  fontFamily: 'Inter, sans-serif',
-                  fontWeight: 500,
-                  outline: 'none',
-                  transition: 'color 0.15s'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.color = '#e0e0e0'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.color = '#808080'
-                }}
-              >
-                <option value="">Go To...</option>
-                {sections.map((section, idx) => (
-                  <option key={idx} value={section.line}>
-                    {section.name}
-                  </option>
-                ))}
-              </select>
+              <div ref={goToRef} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <button
+                  onClick={() => setShowGoToDropdown(!showGoToDropdown)}
+                  style={{
+                    padding: '0 10px',
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    color: '#c8c8c8',
+                    cursor: 'pointer',
+                    fontSize: '10px',
+                    fontFamily: 'JetBrains Mono, monospace',
+                    fontWeight: 600,
+                    outline: 'none',
+                    lineHeight: '1',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    transition: 'color 0.15s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = '#c8c8c8'}
+                >
+                  Go To... ▼
+                </button>
+                {showGoToDropdown && sections.length > 0 && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    marginTop: '2px',
+                    backgroundColor: '#0a0a0a',
+                    border: '1px solid #1a1a1a',
+                    borderRadius: '2px',
+                    minWidth: '150px',
+                    maxHeight: '300px',
+                    overflowY: 'auto',
+                    zIndex: 1000
+                  }}>
+                    {sections.map((section, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => {
+                          scrollToLine(section.line)
+                          setShowGoToDropdown(false)
+                        }}
+                        style={{
+                          padding: '2px 8px',
+                          color: '#18a018',
+                          cursor: 'pointer',
+                          fontSize: '11px',
+                          fontFamily: 'JetBrains Mono, monospace',
+                          transition: 'all 0.15s',
+                          textAlign: 'left',
+                          lineHeight: '1.4'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#111111'
+                          e.currentTarget.style.color = '#c8c8c8'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'transparent'
+                          e.currentTarget.style.color = '#18a018'
+                        }}
+                      >
+                        {section.name}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </>
-          )}
-          {compareMode && (
-            <div
-              onClick={() => {
-                setCompareMode(false)
-                setCompareTab1(-1)
-                setCompareTab2(-1)
-              }}
-              style={{
-                padding: '4px 10px',
-                backgroundColor: 'transparent',
-                border: 'none',
-                color: '#808080',
-                cursor: 'pointer',
-                fontSize: '11px',
-                fontFamily: 'Inter, sans-serif',
-                fontWeight: 500,
-                transition: 'color 0.15s',
-                userSelect: 'none'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = '#ef4444'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = '#808080'
-              }}
-            >
-              Exit Compare
-            </div>
           )}
           <div style={{ width: '1px', height: '20px', backgroundColor: '#333' }} />
           <button
@@ -416,7 +627,7 @@ export function MIRContentView({
               padding: '6px',
               backgroundColor: 'transparent',
               border: 'none',
-              color: '#808080',
+              color: '#c8c8c8',
               cursor: 'pointer',
               fontSize: '16px',
               display: 'flex',
@@ -426,11 +637,11 @@ export function MIRContentView({
               borderRadius: '4px'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.color = '#e0e0e0'
+              e.currentTarget.style.color = '#ffffff'
               e.currentTarget.style.backgroundColor = '#1a1a1a'
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.color = '#808080'
+              e.currentTarget.style.color = '#c8c8c8'
               e.currentTarget.style.backgroundColor = 'transparent'
             }}
           >
@@ -446,7 +657,7 @@ export function MIRContentView({
               padding: '6px',
               backgroundColor: 'transparent',
               border: 'none',
-              color: '#808080',
+              color: '#c8c8c8',
               cursor: 'pointer',
               fontSize: '16px',
               display: 'flex',
@@ -456,11 +667,11 @@ export function MIRContentView({
               borderRadius: '4px'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.color = '#e0e0e0'
+              e.currentTarget.style.color = '#ffffff'
               e.currentTarget.style.backgroundColor = '#1a1a1a'
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.color = '#808080'
+              e.currentTarget.style.color = '#c8c8c8'
               e.currentTarget.style.backgroundColor = 'transparent'
             }}
           >
@@ -544,113 +755,8 @@ export function MIRContentView({
         ))}
       </div>
 
-      {/* Compare Mode: Tab Selection */}
-      {compareMode && compareTab1 === -1 ? (
-        <div style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '20px',
-          backgroundColor: '#0a0a0a'
-        }}>
-          <div style={{
-            color: '#18a018',
-            fontSize: '14px',
-            fontFamily: 'JetBrains Mono, monospace',
-            fontWeight: 600
-          }}>
-            Select two tabs to compare
-          </div>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            {tabs.map((tab, index) => (
-              <button
-                key={index}
-                onClick={() => setCompareTab1(index)}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#1a1a1a',
-                  border: '1px solid #333',
-                  borderRadius: '4px',
-                  color: '#808080',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  fontFamily: 'JetBrains Mono, monospace',
-                  fontWeight: 600,
-                  transition: 'all 0.15s'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.color = '#18a018'
-                  e.currentTarget.style.borderColor = '#18a018'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.color = '#808080'
-                  e.currentTarget.style.borderColor = '#333'
-                }}
-              >
-                {tab.passName}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : compareMode && compareTab2 === -1 ? (
-        <div style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '20px',
-          backgroundColor: '#0a0a0a'
-        }}>
-          <div style={{
-            color: '#18a018',
-            fontSize: '14px',
-            fontFamily: 'JetBrains Mono, monospace',
-            fontWeight: 600
-          }}>
-            Comparing: {tabs[compareTab1]?.passName}
-          </div>
-          <div style={{
-            color: '#808080',
-            fontSize: '12px',
-            fontFamily: 'JetBrains Mono, monospace'
-          }}>
-            Select second tab to compare with
-          </div>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            {tabs.map((tab, index) => index !== compareTab1 && (
-              <button
-                key={index}
-                onClick={() => setCompareTab2(index)}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#1a1a1a',
-                  border: '1px solid #333',
-                  borderRadius: '4px',
-                  color: '#808080',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  fontFamily: 'JetBrains Mono, monospace',
-                  fontWeight: 600,
-                  transition: 'all 0.15s'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.color = '#18a018'
-                  e.currentTarget.style.borderColor = '#18a018'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.color = '#808080'
-                  e.currentTarget.style.borderColor = '#333'
-                }}
-              >
-                {tab.passName}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : compareMode && compareTab1 !== -1 && compareTab2 !== -1 ? (
+      {/* Compare Mode View */}
+      {compareMode && compareTab1 !== -1 && compareTab2 !== -1 ? (
         <CompareMIRView
           tab1={tabs[compareTab1]}
           tab2={tabs[compareTab2]}

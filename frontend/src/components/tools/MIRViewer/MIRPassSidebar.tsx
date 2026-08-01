@@ -58,7 +58,9 @@ export function MIRPassSidebar({
         position: 'sticky',
         top: 0,
         backgroundColor: '#000000',
-        zIndex: 10
+        zIndex: 10,
+        display: 'flex',
+        alignItems: 'center'
       }}>
         <div style={{
           color: '#18a018',
