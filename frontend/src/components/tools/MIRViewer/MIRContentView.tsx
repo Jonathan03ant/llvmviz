@@ -1,10 +1,15 @@
-import { useRef, useEffect, useMemo } from 'react'
+import { useRef, useEffect, useMemo, useState } from 'react'
 import { highlightMIR } from '../../../utils/mirSyntaxHighlight.tsx'
 
 interface MIRContentViewProps {
   mirContent: string | null
   selectedPass: string | null
   loading: boolean
+}
+
+interface MIRSection {
+  name: string
+  line: number
 }
 
 export function MIRContentView({
@@ -15,11 +20,50 @@ export function MIRContentView({
   const contentRef = useRef<HTMLDivElement>(null)
   const lineNumbersRef = useRef<HTMLDivElement>(null)
 
-  // Apply syntax highlighting to MIR content (returns React elements)
   const highlightedMIR = useMemo(() => {
     if (!mirContent) return []
     return highlightMIR(mirContent)
   }, [mirContent])
+
+  const sections = useMemo(() => {
+    if (!mirContent) return []
+
+    const lines = mirContent.split('\n')
+    const sectionList: MIRSection[] = []
+
+    lines.forEach((line, idx) => {
+      const trimmed = line.trim()
+
+      if (trimmed === '--- |') {
+        sectionList.push({ name: 'LLVM IR & Target', line: idx + 1 })
+      } else if (trimmed === '---' && idx > 0) {
+        sectionList.push({ name: 'Function Metadata', line: idx + 1 })
+      } else if (line.match(/^registers:/)) {
+        sectionList.push({ name: 'Registers & Live-ins', line: idx + 1 })
+      } else if (line.match(/^frameInfo:/)) {
+        sectionList.push({ name: 'Stack & Frame Info', line: idx + 1 })
+      } else if (line.match(/^\s+bb\.\d+/)) {
+        const bbMatch = line.match(/bb\.(\d+)/)
+        if (bbMatch) {
+          sectionList.push({ name: `bb.${bbMatch[1]}`, line: idx + 1 })
+        }
+      }
+    })
+
+    return sectionList
+  }, [mirContent])
+
+  const scrollToLine = (lineNumber: number) => {
+    if (!contentRef.current) return
+
+    const lineHeight = 20.8
+    const scrollPosition = (lineNumber - 1) * lineHeight
+
+    contentRef.current.scrollTo({
+      top: scrollPosition,
+      behavior: 'smooth'
+    })
+  }
 
   // Update line numbers when content changes
   useEffect(() => {
@@ -126,6 +170,34 @@ export function MIRContentView({
           MIR Output {selectedPass ? `(after ${selectedPass})` : ''}
         </h2>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <select
+            onChange={(e) => {
+              const lineNumber = parseInt(e.target.value)
+              if (lineNumber > 0) {
+                scrollToLine(lineNumber)
+                e.target.value = ''
+              }
+            }}
+            style={{
+              padding: '4px 8px',
+              backgroundColor: '#1a1a1a',
+              border: '1px solid #333',
+              borderRadius: '4px',
+              color: '#808080',
+              cursor: 'pointer',
+              fontSize: '10px',
+              fontFamily: 'JetBrains Mono, monospace',
+              fontWeight: 600,
+              outline: 'none'
+            }}
+          >
+            <option value="">Go To...</option>
+            {sections.map((section, idx) => (
+              <option key={idx} value={section.line}>
+                {section.name}
+              </option>
+            ))}
+          </select>
           <button
             onClick={handleCopy}
             style={{
