@@ -1,4 +1,5 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useMemo } from 'react'
+import { highlightMIR } from '../../../utils/mirSyntaxHighlight.tsx'
 
 interface MIRContentViewProps {
   mirContent: string | null
@@ -13,6 +14,12 @@ export function MIRContentView({
 }: MIRContentViewProps) {
   const contentRef = useRef<HTMLDivElement>(null)
   const lineNumbersRef = useRef<HTMLDivElement>(null)
+
+  // Apply syntax highlighting to MIR content (returns React elements)
+  const highlightedMIR = useMemo(() => {
+    if (!mirContent) return []
+    return highlightMIR(mirContent)
+  }, [mirContent])
 
   // Update line numbers when content changes
   useEffect(() => {
@@ -189,7 +196,7 @@ export function MIRContentView({
           <div className="line-number">1</div>
         </div>
 
-        {/* MIR Content - Scrollable */}
+        {/* MIR Content - Scrollable with Syntax Highlighting */}
         <div
           ref={contentRef}
           onScroll={handleScroll}
@@ -206,7 +213,9 @@ export function MIRContentView({
             textAlign: 'left'
           }}
         >
-          {mirContent || ''}
+          {highlightedMIR.map((line, idx) => (
+            <div key={idx}>{line}</div>
+          ))}
         </div>
       </div>
     </div>
