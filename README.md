@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="frontend/public/llvm-readme.png" alt="LLVMViz Logo" width="400"/>
+  <img src=".github/images/logo.png" alt="LLVMViz Logo" width="400"/>
 
   # LLVMViz
 
@@ -42,13 +42,6 @@ LLVMViz is an interactive web-based platform for visualizing LLVM compiler inter
 - **Side-by-side comparison** with line-level and word-level diff highlighting
 - **Smart filtering** - separates viewable passes from analysis-only passes
 - **Quick navigation** - jump to registers, frame info, or basic blocks instantly
-
-### Modern UI
-- Dark theme optimized for code readability
-- Collapsible panels to maximize viewing area
-- Resizable sidebars
-- Copy/Download MIR output
-- Real-time MIR generation
 
 ---
 
@@ -98,10 +91,20 @@ llc -march=amdgcn -mcpu=gfx1101 -stop-after=regbankselect input.ll -o output.mir
 ### SelectionDAG Viewer
 Interactive visualization of LLVM's SelectionDAG with stage-by-stage views and compare mode.
 
+![SelectionDAG Overview](.github/images/selectiondag-overview.png)
+*Full DAG visualization with code editor, interactive graph, and node filtering*
+
+![SelectionDAG Compare Mode](.github/images/selectiondag-compare.png)
+*Side-by-side comparison showing added (blue) and removed (red) nodes with change summary*
+
 ### MIR Viewer
 Full pipeline visualization with syntax highlighting, tabs, and side-by-side comparison.
 
-*(Screenshots to be added)*
+![MIR Viewer](.github/images/mir-viewer.png)
+*MIR pipeline with 148+ passes, collapsible sidebar, and syntax-highlighted output*
+
+![MIR Compare Mode](.github/images/mir-compare.png)
+*Side-by-side MIR diff with line-level and word-level change highlighting*
 
 ---
 
