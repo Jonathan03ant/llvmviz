@@ -277,12 +277,12 @@ export function MIRContentView({
   }
 
   const handleDownload = () => {
-    if (mirContent) {
+    if (mirContent && activeTab) {
       const blob = new Blob([mirContent], { type: 'text/plain' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `${selectedPass || 'output'}.mir`
+      a.download = `${activeTab.passName || 'output'}.mir`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)

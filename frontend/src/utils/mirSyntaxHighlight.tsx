@@ -1,10 +1,5 @@
 import React from 'react'
 
-interface Token {
-  text: string
-  type?: 'virtual-reg' | 'physical-reg' | 'reg-class' | 'basic-block' | 'opcode' | 'keyword' | 'comment' | 'field' | 'boolean-true' | 'boolean-false' | 'number' | 'string'
-}
-
 const COLORS = {
   'virtual-reg': '#3b82f6',
   'physical-reg': '#10b981',
@@ -20,8 +15,6 @@ const COLORS = {
 }
 
 export function highlightMIRLine(line: string, lineNumber: number): React.ReactNode {
-  const tokens: Token[] = []
-
   if (line.trim().startsWith(';')) {
     return <span key={lineNumber} style={{ color: COLORS['comment'] }}>{line}</span>
   }
