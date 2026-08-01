@@ -47,12 +47,18 @@ export interface MIRPipeline {
   semantic_stages?: any  // DEPRECATED: For backward compatibility
 }
 
+interface MIRTab {
+  passId: string
+  passName: string
+  content: string | null
+  loading: boolean
+}
+
 export function MIRViewer({ irCode, llcPath, arch, mcpu, onIRCodeChange, terminalOutput, onTerminalUpdate, onDiscoverPassesChange, onPipelineChange, onSelectedPassChange, onPassSelectHandlerChange }: MIRViewerProps) {
   const [pipeline, setPipeline] = useState<MIRPipeline | null>(null)
-  const [selectedPass, setSelectedPass] = useState<string | null>(null)
-  const [mirContent, setMirContent] = useState<string | null>(null)
+  const [tabs, setTabs] = useState<MIRTab[]>([])
+  const [activeTabIndex, setActiveTabIndex] = useState<number>(-1)
   const [loadingPipeline, setLoadingPipeline] = useState(false)
-  const [loadingMIR, setLoadingMIR] = useState(false)
 
   // Resizable sidebar state
   const [sidebarWidth, setSidebarWidth] = useState(400)
@@ -128,21 +134,22 @@ export function MIRViewer({ irCode, llcPath, arch, mcpu, onIRCodeChange, termina
     if (onDiscoverPassesChange) {
       onDiscoverPassesChange(handleDiscoverPasses, loadingPipeline)
     }
-  }, [loadingPipeline, irCode, llcPath, arch, mcpu, onDiscoverPassesChange])
+  }, [loadingPipeline, irCode, llcPath, arch, mcpu])
 
   // Expose pipeline to parent (for Footer dropdown)
   useEffect(() => {
     if (onPipelineChange) {
       onPipelineChange(pipeline)
     }
-  }, [pipeline, onPipelineChange])
+  }, [pipeline])
 
   // Expose selected pass to parent (for Footer dropdown)
   useEffect(() => {
     if (onSelectedPassChange) {
-      onSelectedPassChange(selectedPass)
+      const activeTab = tabs[activeTabIndex]
+      onSelectedPassChange(activeTab?.passId || null)
     }
-  }, [selectedPass, onSelectedPassChange])
+  }, [activeTabIndex])
 
   // Expose pass selector to parent (for Footer to trigger pass selection)
   useEffect(() => {
@@ -183,9 +190,25 @@ export function MIRViewer({ irCode, llcPath, arch, mcpu, onIRCodeChange, termina
   }
 
   const handlePassSelect = async (passId: string) => {
-    setSelectedPass(passId)
-    setLoadingMIR(true)
-    setMirContent(null)
+    const existingTabIndex = tabs.findIndex(tab => tab.passId === passId)
+
+    if (existingTabIndex !== -1) {
+      setActiveTabIndex(existingTabIndex)
+      return
+    }
+
+    const passName = pipeline?.all_passes.find(p => p.id === passId)?.name || passId
+
+    const newTab: MIRTab = {
+      passId,
+      passName,
+      content: null,
+      loading: true
+    }
+
+    const newTabIndex = tabs.length
+    setTabs([...tabs, newTab])
+    setActiveTabIndex(newTabIndex)
 
     try {
       const response = await fetch('/api/generate_mir_at_pass', {
@@ -200,20 +223,16 @@ export function MIRViewer({ irCode, llcPath, arch, mcpu, onIRCodeChange, termina
         })
       })
 
-      // Read response body once (calling .text() twice consumes stream!)
       const text = await response.text()
 
-      // Check if response has content
       if (!text || text.trim().length === 0) {
         throw new Error('Empty response from server')
       }
 
-      // Check if response was OK
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${text}`)
       }
 
-      // Parse JSON
       let data
       try {
         data = JSON.parse(text)
@@ -223,24 +242,26 @@ export function MIRViewer({ irCode, llcPath, arch, mcpu, onIRCodeChange, termina
         throw new Error(`Invalid JSON response: ${text.substring(0, 100)}`)
       }
 
-      // Update terminal output
       if (data.terminal_output && onTerminalUpdate) {
         onTerminalUpdate(data.terminal_output)
       }
 
-      if (data.success) {
-        setMirContent(data.mir_content)
-      } else {
-        // Show error message in MIR content area
-        const errorMsg = `# Error generating MIR for pass: ${passId}\n\n${data.error || 'Unknown error'}\n\n# This pass may not support -stop-after\n# Try selecting a different pass from the sidebar`
-        setMirContent(errorMsg)
-      }
+      const mirContent = data.success
+        ? data.mir_content
+        : `# Error generating MIR for pass: ${passId}\n\n${data.error || 'Unknown error'}\n\n# This pass may not support -stop-after\n# Try selecting a different pass from the sidebar`
+
+      setTabs(prevTabs => prevTabs.map((tab, idx) =>
+        idx === newTabIndex ? { ...tab, content: mirContent, loading: false } : tab
+      ))
     } catch (error) {
       console.error('Error generating MIR:', error)
       const errorMessage = error instanceof Error ? error.message : String(error)
-      setMirContent(`# Error: ${errorMessage}\n\n# Failed to communicate with backend\n# Pass ID: ${passId}`)
+      const errorContent = `# Error: ${errorMessage}\n\n# Failed to communicate with backend\n# Pass ID: ${passId}`
 
-      // Show error in terminal
+      setTabs(prevTabs => prevTabs.map((tab, idx) =>
+        idx === newTabIndex ? { ...tab, content: errorContent, loading: false } : tab
+      ))
+
       if (onTerminalUpdate) {
         const timestamp = new Date().toLocaleTimeString()
         onTerminalUpdate([{
@@ -249,8 +270,25 @@ export function MIRViewer({ irCode, llcPath, arch, mcpu, onIRCodeChange, termina
           timestamp
         }])
       }
-    } finally {
-      setLoadingMIR(false)
+    }
+  }
+
+  const handleCloseTab = (index: number) => {
+    const newTabs = tabs.filter((_, idx) => idx !== index)
+
+    if (newTabs.length === 0) {
+      setTabs([])
+      setActiveTabIndex(-1)
+      return
+    }
+
+    setTabs(newTabs)
+
+    if (activeTabIndex === index) {
+      const newActiveIndex = index >= newTabs.length ? newTabs.length - 1 : index
+      setActiveTabIndex(newActiveIndex)
+    } else if (activeTabIndex > index) {
+      setActiveTabIndex(activeTabIndex - 1)
     }
   }
 
@@ -274,7 +312,7 @@ export function MIRViewer({ irCode, llcPath, arch, mcpu, onIRCodeChange, termina
         <div style={{ width: `${sidebarWidth}px`, position: 'relative' }}>
           <MIRPassSidebar
             pipeline={pipeline}
-            selectedPass={selectedPass}
+            selectedPass={tabs[activeTabIndex]?.passId || null}
             onPassSelect={handlePassSelect}
           />
           {/* Resize handle */}
@@ -298,9 +336,10 @@ export function MIRViewer({ irCode, llcPath, arch, mcpu, onIRCodeChange, termina
         {/* Right Content - MIR Display */}
         <div style={{ flex: 1, overflow: 'hidden' }}>
           <MIRContentView
-            mirContent={mirContent}
-            selectedPass={selectedPass}
-            loading={loadingMIR}
+            tabs={tabs}
+            activeTabIndex={activeTabIndex}
+            onTabChange={setActiveTabIndex}
+            onTabClose={handleCloseTab}
           />
         </div>
       </div>
@@ -317,7 +356,7 @@ export function MIRViewer({ irCode, llcPath, arch, mcpu, onIRCodeChange, termina
             value={irCode}
             onChange={onIRCodeChange}
             terminalOutput={terminalOutput}
-            isRunning={loadingPipeline || loadingMIR}
+            isRunning={loadingPipeline || tabs.some(tab => tab.loading)}
             layout="horizontal"
           />
         </div>

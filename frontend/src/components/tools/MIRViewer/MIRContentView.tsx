@@ -1,10 +1,18 @@
 import { useRef, useEffect, useMemo, useState } from 'react'
 import { highlightMIR } from '../../../utils/mirSyntaxHighlight.tsx'
 
-interface MIRContentViewProps {
-  mirContent: string | null
-  selectedPass: string | null
+interface MIRTab {
+  passId: string
+  passName: string
+  content: string | null
   loading: boolean
+}
+
+interface MIRContentViewProps {
+  tabs: MIRTab[]
+  activeTabIndex: number
+  onTabChange: (index: number) => void
+  onTabClose: (index: number) => void
 }
 
 interface MIRSection {
@@ -13,12 +21,17 @@ interface MIRSection {
 }
 
 export function MIRContentView({
-  mirContent,
-  selectedPass,
-  loading
+  tabs,
+  activeTabIndex,
+  onTabChange,
+  onTabClose
 }: MIRContentViewProps) {
   const contentRef = useRef<HTMLDivElement>(null)
   const lineNumbersRef = useRef<HTMLDivElement>(null)
+
+  const activeTab = tabs[activeTabIndex]
+  const mirContent = activeTab?.content || null
+  const loading = activeTab?.loading || false
 
   const highlightedMIR = useMemo(() => {
     if (!mirContent) return []
@@ -65,15 +78,10 @@ export function MIRContentView({
     })
   }
 
-  // Update line numbers when content changes
-  useEffect(() => {
-    if (mirContent && lineNumbersRef.current) {
-      const lines = mirContent.split('\n').length
-      lineNumbersRef.current.innerHTML = Array.from(
-        { length: lines },
-        (_, i) => `<div class="line-number">${i + 1}</div>`
-      ).join('')
-    }
+  const lineNumbers = useMemo(() => {
+    if (!mirContent) return []
+    const lines = mirContent.split('\n').length
+    return Array.from({ length: lines }, (_, i) => i + 1)
   }, [mirContent])
 
   // Sync scroll between line numbers and content
@@ -113,7 +121,7 @@ export function MIRContentView({
     }
   }
 
-  if (loading) {
+  if (tabs.length === 0) {
     return (
       <div style={{
         flex: 1,
@@ -124,22 +132,12 @@ export function MIRContentView({
         backgroundColor: '#0a0a0a'
       }}>
         <div style={{
-          color: '#18a018',
-          fontSize: '16px',
-          fontFamily: 'JetBrains Mono, monospace',
-          marginBottom: '8px'
+          color: '#808080',
+          fontSize: '14px',
+          fontFamily: 'JetBrains Mono, monospace'
         }}>
-          ⏳ Generating MIR...
+          Select a pass from the sidebar to view MIR
         </div>
-        {selectedPass && (
-          <div style={{
-            color: '#808080',
-            fontSize: '12px',
-            fontFamily: 'Inter, sans-serif'
-          }}>
-            after {selectedPass}
-          </div>
-        )}
       </div>
     )
   }
@@ -167,7 +165,7 @@ export function MIRContentView({
           fontWeight: '600',
           fontFamily: 'JetBrains Mono, monospace'
         }}>
-          MIR Output {selectedPass ? `(after ${selectedPass})` : ''}
+          MIR Output
         </h2>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           <select
@@ -245,7 +243,95 @@ export function MIRContentView({
         </div>
       </div>
 
+      {/* Tab Bar */}
+      <div style={{
+        display: 'flex',
+        gap: '4px',
+        padding: '4px 8px',
+        borderBottom: '1px solid #1a1a1a',
+        backgroundColor: '#0a0a0a',
+        overflowX: 'auto'
+      }}>
+        {tabs.map((tab, index) => (
+          <div
+            key={`${tab.passId}-${index}`}
+            onClick={() => onTabChange(index)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '4px 8px',
+              backgroundColor: activeTabIndex === index ? '#1a1a1a' : 'transparent',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              transition: 'background-color 0.15s',
+              whiteSpace: 'nowrap'
+            }}
+            onMouseEnter={(e) => {
+              if (activeTabIndex !== index) {
+                e.currentTarget.style.backgroundColor = '#141414'
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (activeTabIndex !== index) {
+                e.currentTarget.style.backgroundColor = 'transparent'
+              }
+            }}
+          >
+            <span style={{
+              color: activeTabIndex === index ? '#18a018' : '#808080',
+              fontSize: '10px',
+              fontFamily: 'JetBrains Mono, monospace',
+              fontWeight: 600
+            }}>
+              {tab.passName}
+            </span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onTabClose(index)
+              }}
+              style={{
+                backgroundColor: 'transparent',
+                border: 'none',
+                color: '#606060',
+                cursor: 'pointer',
+                fontSize: '12px',
+                padding: '0 2px',
+                lineHeight: '1',
+                transition: 'color 0.15s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = '#ef4444'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = '#606060'
+              }}
+            >
+              ×
+            </button>
+          </div>
+        ))}
+      </div>
+
       {/* MIR Content with Line Numbers */}
+      {loading ? (
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: '#0a0a0a'
+        }}>
+          <div style={{
+            color: '#18a018',
+            fontSize: '14px',
+            fontFamily: 'JetBrains Mono, monospace'
+          }}>
+            Generating MIR...
+          </div>
+        </div>
+      ) : (
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
         {/* Line Numbers */}
         <div
@@ -265,7 +351,9 @@ export function MIRContentView({
             WebkitUserSelect: 'none'
           }}
         >
-          <div className="line-number">1</div>
+          {lineNumbers.map(num => (
+            <div key={num}>{num}</div>
+          ))}
         </div>
 
         {/* MIR Content - Scrollable with Syntax Highlighting */}
@@ -290,6 +378,7 @@ export function MIRContentView({
           ))}
         </div>
       </div>
+      )}
     </div>
   )
 }
