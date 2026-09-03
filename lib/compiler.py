@@ -11,6 +11,13 @@ DAG_STAGE_FLAGS = {
     'sched': '-view-sched-dags'                   # Before scheduling (after instruction selection)
 }
 
+GLOBAL_ISEL_STAGES = {
+    "irtranslator": "irtranslator",
+    "legalizer": "legalizer",
+    "regbankselect": "amdgpu-regbankselect",
+    "instruction-select": "instruction-select",
+    "finalize-isel": "finalize-isel",
+}
 
 
 def run_llc(ir_code: str, stage: str, llc_path: str, arch: str = 'amdgcn', mcpu: str = 'gfx1101'):
@@ -22,7 +29,7 @@ def run_llc(ir_code: str, stage: str, llc_path: str, arch: str = 'amdgcn', mcpu:
 
     flag = DAG_STAGE_FLAGS[stage]
 
-    cmd = build_mir_command [
+    cmd = [
         llc_path,
         f'-march={arch}',
         f'-mcpu={mcpu}',
@@ -84,6 +91,20 @@ def build_mir_command(
     """
     if selector not in {"selectiondag", "globalisel"}:
         raise ValueError(f"Unknown instruction selector: {selector}")
+
+    if selector == "globalisel":
+        pass_id = GLOBAL_ISEL_STAGES.get(stop_after)
+
+        if pass_id is None:
+            raise ValueError(f"Unknown GlobalISel stage: {stop_after}")
+    else:
+        if stop_after != "finalize-isel":
+            raise ValueError(
+                f"SelectionDAG MIR only supports finalize-isel, got: {stop_after}"
+            )
+
+        pass_id = stop_after
+
     cmd = [
         llc_path,
         f"-march={arch}",
@@ -97,9 +118,10 @@ def build_mir_command(
         ])
     else:
         cmd.append("-global-isel=0")
+
     cmd.extend([
         input_path,
-        f"-stop-after={stop_after}",
+        f"-stop-after={pass_id}",
         "-o",
         output_path,
     ])

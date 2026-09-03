@@ -161,6 +161,8 @@ def generate_mir_endpoint():
         llc_path = data.get('llc_path', 'llc')
         arch = data.get('arch', 'amdgcn')
         mcpu = data.get('mcpu', 'gfx1101')
+        selector = data.get('selector', 'selectiondag')
+        stop_after = data.get('stop_after', 'finalize-isel')
 
         if not ir_code:
             timestamp = datetime.datetime.now().strftime("%H:%M:%S")
@@ -174,12 +176,21 @@ def generate_mir_endpoint():
                 }]
             }), 400
 
-        mir_content, terminal_output = generate_mir(ir_code, llc_path, arch, mcpu)
+        mir_content, terminal_output = generate_mir(
+            ir_code=ir_code,
+            llc_path=llc_path,
+            arch=arch,
+            mcpu=mcpu,
+            selector=selector,
+            stop_after=stop_after,
+        )
 
         return jsonify({
             'success': True,
             'mir': mir_content,
             'filename': 'output.mir',
+            'selector': selector,
+            'stop_after': stop_after,
             'terminal_output': terminal_output
         })
 
