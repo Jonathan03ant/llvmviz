@@ -68,7 +68,8 @@ def run_llc(ir_code: str, stage: str, llc_path: str, arch: str = 'amdgcn', mcpu:
 def generate_mir(ir_code: str, llc_path: str, arch: str, mcpu: str):
     """
     Generates Machine IR (MIR) output from LLVM IR.
-    Shows machine instructions with virtual registers (before register allocation).
+    Shows machine instructions with virtual registers
+    This is the MIR before we enter the actual MIR pipeline..
     """
     with open('/tmp/input.ll', 'w') as f:
         f.write(ir_code)
