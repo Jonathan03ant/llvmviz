@@ -12,6 +12,7 @@ DAG_STAGE_FLAGS = {
 }
 
 
+
 def run_llc(ir_code: str, stage: str, llc_path: str, arch: str = 'amdgcn', mcpu: str = 'gfx1101'):
     """
     Generates graph .dot file from LLVM IR
@@ -21,7 +22,7 @@ def run_llc(ir_code: str, stage: str, llc_path: str, arch: str = 'amdgcn', mcpu:
 
     flag = DAG_STAGE_FLAGS[stage]
 
-    cmd = [
+    cmd = build_mir_command [
         llc_path,
         f'-march={arch}',
         f'-mcpu={mcpu}',
@@ -64,8 +65,56 @@ def run_llc(ir_code: str, stage: str, llc_path: str, arch: str = 'amdgcn', mcpu:
 
     return dot_file, terminal_output
 
+def build_mir_command(
+    llc_path: str,
+    input_path: str,
+    output_path: str,
+    arch: str,
+    mcpu: str,
+    selector = "selectiondag",
+    stop_after = "finalize-isel"
+):
+    """
+    Build the llc command to produce MIR snapshot
+    selector:
+        "selectiondag" uses the traditional SelectionDag path
+        "globalisel" uses the GlobalIsel path
+    stop_after:
+        the machine pass after which llc serializes MIR
+    """
+    if selector not in {"selectiondag", "globalisel"}:
+        raise ValueError(f"Unknown instruction selector: {selector}")
+    cmd = [
+        llc_path,
+        f"-march={arch}",
+        f"-mcpu={mcpu}",
+    ]
 
-def generate_mir(ir_code: str, llc_path: str, arch: str, mcpu: str):
+    if selector == 'globalisel':
+        cmd.extend([
+            "-global-isel",
+            "-global-isel-abort=1", #do not silently fail back to SelectionDag
+        ])
+    else:
+        cmd.append("-global-isel=0")
+    cmd.extend([
+        input_path,
+        f"-stop-after={stop_after}",
+        "-o",
+        output_path,
+    ])
+
+    return cmd
+
+
+def generate_mir(
+    ir_code: str,
+    llc_path: str,
+    arch: str,
+    mcpu: str,
+    selector: str = "selectiondag",
+    stop_after: str = "finalize-isel"
+):
     """
     Generates Machine IR (MIR) output from LLVM IR.
     Shows machine instructions with virtual registers
@@ -76,14 +125,16 @@ def generate_mir(ir_code: str, llc_path: str, arch: str, mcpu: str):
 
     output_mir = '/tmp/output.mir'
 
-    cmd = [
-        llc_path,
-        f'-march={arch}',
-        f'-mcpu={mcpu}',
-        '/tmp/input.ll',
-        '-stop-after=finalize-isel',
-        '-o', output_mir
-    ]
+    cmd = build_mir_command(
+        llc_path=llc_path,
+        input_path="/tmp/input.ll",
+        output_path=output_mir,
+        arch=arch,
+        mcpu=mcpu,
+        selector=selector,
+        stop_after=stop_after,
+    )
+
 
     result = subprocess.run(
         cmd,
