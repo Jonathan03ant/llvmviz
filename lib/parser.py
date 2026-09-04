@@ -1,4 +1,5 @@
 import re
+import os
 
 
 def extract_label(line: str):
@@ -136,6 +137,46 @@ def parse_dot(dot_file_path: str):
         node["data"]["input_types"] = input_types
 
     return {"nodes": nodes, "edges": edges}
+
+
+def parse_dag_graph(dot_file_path):
+    """
+    Parse one DOT file and attach its LLVM graph identity
+    Used by SelectionDag Graph and run_llc()
+    """
+    with open(dot_file_path, 'r') as dot_file:
+        first_line = dot_file.readline().strip()
+
+    title_match = re.match(r'^digraph "([^"]+)"', first_line)
+    title = (
+        title_match.group(1)
+        if title_match
+        else os.path.basename(dot_file_path)
+    )
+
+    stage_name = ''
+    function_name = ''
+    block_name = ''
+
+    stage_name, separator, location = title.partition(' input for ')
+
+    if separator:
+        function_name, block_separator, block_name = location.rpartition(':')
+
+        if not block_separator:
+            function_name = location
+            block_name = ''
+
+    graph_data = parse_dot(dot_file_path)
+    graph_data.update({
+        "title": title,
+        "stage": stage_name,
+        "function": function_name,
+        "block": block_name
+    })
+
+    return graph_data
+
 
 def get_opcodes(nodes):
     """

@@ -2,6 +2,8 @@ import subprocess
 import glob
 import os
 import datetime
+import tempfile
+from lib.parser import parse_dag_graph
 
 DAG_STAGE_FLAGS = {
     'dag-combine1': '-view-dag-combine1-dags',    # After build, before first optimization pass
@@ -20,11 +22,21 @@ GLOBAL_ISEL_STAGES = {
 }
 
 
-def run_llc(ir_code: str, stage: str, llc_path: str, arch: str = 'amdgcn', mcpu: str = 'gfx1101'):
+def run_llc(
+    ir_code: str,
+    stage: str,
+    llc_path: str,
+    arch: str = 'amdgcn',
+    mcpu: str = 'gfx1101',
+    work_dir: str = '/tmp'
+):
     """
-    Generates graph .dot file from LLVM IR
+    Run one SelectionDAG visualization stage and return every DOT graph
+    generated for that invocation.
     """
-    with open('/tmp/input.ll', 'w') as f:
+    input_path = os.path.join(work_dir, 'input.ll')
+
+    with open(input_path, 'w') as f:
         f.write(ir_code)
 
     flag = DAG_STAGE_FLAGS[stage]
@@ -33,14 +45,15 @@ def run_llc(ir_code: str, stage: str, llc_path: str, arch: str = 'amdgcn', mcpu:
         llc_path,
         f'-march={arch}',
         f'-mcpu={mcpu}',
-        '/tmp/input.ll',
+        input_path,
         flag,
         '-o', '/dev/null'
     ]
 
-    # ViewGraph always writes the DOT file first. Restrict PATH for this
-    # subprocess so desktop viewers such as xdg-open are not launched.
     graph_env = os.environ.copy()
+    graph_env['TMPDIR'] = work_dir
+
+    # Prevent LLVM from launching xdg-open or another desktop graph viewer.
     graph_env['PATH'] = os.path.dirname(os.path.abspath(llc_path))
 
     result = subprocess.run(
@@ -51,13 +64,12 @@ def run_llc(ir_code: str, stage: str, llc_path: str, arch: str = 'amdgcn', mcpu:
         env=graph_env
     )
 
-    terminal_output = []
     timestamp = datetime.datetime.now().strftime("%H:%M:%S")
-    terminal_output.append({
+    terminal_output = [{
         "type": "command",
         "text": " ".join(cmd),
         "timestamp": timestamp
-    })
+    }]
 
     if result.stdout.strip():
         for line in result.stdout.strip().split('\n'):
@@ -66,17 +78,26 @@ def run_llc(ir_code: str, stage: str, llc_path: str, arch: str = 'amdgcn', mcpu:
                 "text": line,
                 "timestamp": timestamp
             })
+
     terminal_output.append({
         "type": "success",
         "text": f"✓ Compiled successfully (exit code: {result.returncode})",
         "timestamp": timestamp
     })
 
-    dot_files = glob.glob('/tmp/dag.*.dot')
-    dot_files.sort(key=os.path.getmtime, reverse=True)
-    dot_file = dot_files[0]
+    dot_files = glob.glob(os.path.join(work_dir, 'dag.*.dot'))
 
-    return dot_file, terminal_output
+    # Ascending creation order:
+    # entry, small, Flow, large, merge
+    dot_files.sort(key=os.path.getmtime)
+
+    if not dot_files:
+        raise RuntimeError(
+            f"No SelectionDAG DOT files were generated for stage '{stage}'"
+        )
+
+    return dot_files, terminal_output
+
 
 def build_mir_command(
     llc_path: str,
@@ -201,4 +222,28 @@ def generate_mir(
 
     return mir_content, terminal_output
 
+
+def compile_dag_stage(ir_code, stage, llc_path, arch, mcpu):
+    """
+    Compile one stage inside an isolated directory, parse all generated
+    block DAGs, and then safely remove the temporary files.
+    """
+    with tempfile.TemporaryDirectory(
+        prefix=f'llvmviz-{stage}-'
+    ) as work_dir:
+        dot_files, terminal_output = run_llc(
+            ir_code=ir_code,
+            stage=stage,
+            llc_path=llc_path,
+            arch=arch,
+            mcpu=mcpu,
+            work_dir=work_dir
+        )
+
+        graphs = [
+            parse_dag_graph(dot_file_path)
+            for dot_file_path in dot_files
+        ]
+
+    return graphs, terminal_output
 

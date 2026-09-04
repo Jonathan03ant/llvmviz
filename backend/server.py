@@ -6,8 +6,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from lib.compiler import run_llc, DAG_STAGE_FLAGS, generate_mir
-from lib.parser import parse_dot
+from lib.compiler import compile_dag_stage, DAG_STAGE_FLAGS, generate_mir
 from lib.targets import get_architectures, get_cpus
 from lib.utils import kill_port_8080, generate_comparison
 from lib.mir_pipeline import discover_mir_passes_with_analysis, generate_mir_at_pass
@@ -45,36 +44,79 @@ def compile_endpoint():
         if compare_stage and compare_stage not in DAG_STAGE_FLAGS:
             return jsonify({'error': f'Invalid compare_stage: {compare_stage}'}), 400
 
-        # Compile primary stage
-        dot_file_path, terminal_output = run_llc(ir_code, stage, llc_path, arch, mcpu)
-        graph_data = parse_dot(dot_file_path)
+        # Compile every basic-block DAG generated for the primary stage.
+        primary_graphs, terminal_output = compile_dag_stage(
+            ir_code=ir_code,
+            stage=stage,
+            llc_path=llc_path,
+            arch=arch,
+            mcpu=mcpu
+        )
 
-        response = {
-            **graph_data,
-            "terminal_output": terminal_output
-        }
-
-        # If compare_stage is provided, compile it and generate comparison
-        if compare_stage:
-            compare_dot_path, compare_terminal = run_llc(ir_code, compare_stage, llc_path, arch, mcpu)
-            compare_graph_data = parse_dot(compare_dot_path)
-
-            # Generate comparison between the two stages
-            comparison = generate_comparison(
-                nodes1=graph_data['nodes'],
-                edges1=graph_data['edges'],
-                stage1_name=stage,
-                nodes2=compare_graph_data['nodes'],
-                edges2=compare_graph_data['edges'],
-                stage2_name=compare_stage
+        if not primary_graphs:
+            raise RuntimeError(
+                f"No graphs were generated for stage '{stage}'"
             )
 
-            # Add comparison data to response
-            response['compare_nodes'] = compare_graph_data['nodes']
-            response['compare_edges'] = compare_graph_data['edges']
-            response['comparison'] = comparison
-            # Append compare terminal output
-            response['terminal_output'].extend(compare_terminal)
+        compare_graphs = []
+
+        if compare_stage:
+            compare_graphs, compare_terminal = compile_dag_stage(
+                ir_code=ir_code,
+                stage=compare_stage,
+                llc_path=llc_path,
+                arch=arch,
+                mcpu=mcpu
+            )
+
+            terminal_output.extend(compare_terminal)
+
+            # Match graphs from both stages by function and basic block.
+            compare_by_block = {
+                (graph["function"], graph["block"]): graph
+                for graph in compare_graphs
+            }
+
+            for graph_index, primary_graph in enumerate(primary_graphs):
+                graph_key = (
+                    primary_graph["function"],
+                    primary_graph["block"]
+                )
+
+                compare_graph = compare_by_block.get(graph_key)
+
+                # Unnamed blocks can share an empty block name. In that case,
+                # corresponding creation order is the safest fallback.
+                if (
+                    not primary_graph["block"]
+                    and graph_index < len(compare_graphs)
+                ):
+                    compare_graph = compare_graphs[graph_index]
+
+                if compare_graph is None:
+                    continue
+
+                primary_graph["compare_nodes"] = compare_graph["nodes"]
+                primary_graph["compare_edges"] = compare_graph["edges"]
+                primary_graph["comparison"] = generate_comparison(
+                    nodes1=primary_graph["nodes"],
+                    edges1=primary_graph["edges"],
+                    stage1_name=stage,
+                    nodes2=compare_graph["nodes"],
+                    edges2=compare_graph["edges"],
+                    stage2_name=compare_stage
+                )
+
+        # Preserve the original top-level fields so the existing frontend
+        # continues displaying one graph before the block selector is added.
+        default_graph = primary_graphs[0]
+
+        response = {
+            **default_graph,
+            "graphs": primary_graphs,
+            "compare_graphs": compare_graphs,
+            "terminal_output": terminal_output
+        }
 
         return jsonify(response)
 
