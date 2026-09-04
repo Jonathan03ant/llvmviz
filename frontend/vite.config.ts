@@ -7,6 +7,10 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',  // Allow SSH access
     port: 5173,
+    watch: {
+      usePolling: true,
+      interval: 1000,
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:8080',  // Python backend
