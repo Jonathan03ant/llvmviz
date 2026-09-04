@@ -22,7 +22,7 @@ interface FooterProps {
   isLoading: boolean
   onViewMIR?: () => void
   isMIRLoading?: boolean
-  mode?: 'selectiondag' | 'mir'
+  mode?: 'selectiondag' | 'globalisel' | 'mir'
   onDiscoverPasses?: () => void
   isDiscovering?: boolean
   mirPasses?: Array<{name: string, id: string}>  // All MIR passes for dropdown
@@ -36,6 +36,14 @@ const DAG_STAGES = [
   { value: 'dag-combine2', label: 'dag-combine2' },
   { value: 'isel', label: 'isel' },
   { value: 'sched', label: 'sched' },
+]
+
+const GLOBAL_ISEL_STAGES = [
+  { value: 'irtranslator', label: 'IRTranslator' },
+  { value: 'legalizer', label: 'Legalizer' },
+  { value: 'regbankselect', label: 'RegBankSelect' },
+  { value: 'instruction-select', label: 'InstructionSelect' },
+  { value: 'finalize-isel', label: 'FinalizeISel' },
 ]
 
 export function Footer({
@@ -69,6 +77,7 @@ export function Footer({
 }: FooterProps) {
   const archOptions = architectures.map(a => ({ value: a.name, label: a.name }))
   const cpuOptions = cpus.map(c => ({ value: c.name, label: c.name }))
+  const selectorStageOptions = mode === 'globalisel' ? GLOBAL_ISEL_STAGES : DAG_STAGES
 
   // MIR pass options with count header
   const mirPassOptions = mirPasses.length > 0
@@ -133,22 +142,22 @@ export function Footer({
         <div className="w-px h-4 bg-[#1a1a1a]"></div>
         <div className="flex items-center gap-2">
           <span className="text-[#808080]">
-            {mode === 'selectiondag' ? 'Stage:' : 'MIR Pass:'}
+            {mode === 'mir' ? 'MIR Pass:' : 'Stage:'}
           </span>
-          {mode === 'selectiondag' ? (
-            <CustomSelect value={stage} options={DAG_STAGES} onChange={onStageChange} />
-          ) : (
+          {mode === 'mir' ? (
             <CustomSelect
               value={selectedMirPass}
               options={mirPassOptions}
               onChange={(value) => onMirPassChange && onMirPassChange(value)}
               disabled={mirPasses.length === 0}
             />
+          ) : (
+            <CustomSelect value={stage} options={selectorStageOptions} onChange={onStageChange} />
           )}
         </div>
 
-        {/* SelectionDAG-specific controls */}
-        {mode === 'selectiondag' && (
+        {/* Instruction-selector comparison controls */}
+        {mode !== 'mir' && (
           <>
             <div className="w-px h-4 bg-[#1a1a1a]"></div>
             <div className="flex items-center gap-2">
@@ -164,7 +173,7 @@ export function Footer({
               {compareEnabled && (
                 <>
                   <span className="text-[#808080]">vs</span>
-                  <CustomSelect value={compareStage} options={DAG_STAGES} onChange={onCompareStageChange} />
+                  <CustomSelect value={compareStage} options={selectorStageOptions} onChange={onCompareStageChange} />
                 </>
               )}
             </div>
@@ -174,8 +183,8 @@ export function Footer({
 
       {/* Right side - Buttons */}
       <div className="flex items-center gap-3">
-        {/* SelectionDAG mode buttons */}
-        {mode === 'selectiondag' && (
+        {/* Instruction-selector mode buttons */}
+        {mode !== 'mir' && (
           <>
             {onViewMIR && (
               <button

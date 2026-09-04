@@ -1,7 +1,7 @@
 import { useRef, useEffect, useMemo, useState } from 'react'
 import { highlightMIR } from '../../../utils/mirSyntaxHighlight.tsx'
 
-interface MIRTab {
+export interface MIRTab {
   passId: string
   passName: string
   content: string | null
@@ -20,7 +20,7 @@ interface MIRSection {
   line: number
 }
 
-function CompareMIRView({ tab1, tab2 }: { tab1: MIRTab, tab2: MIRTab }) {
+export function CompareMIRView({ tab1, tab2 }: { tab1: MIRTab, tab2: MIRTab }) {
   const leftRef = useRef<HTMLDivElement>(null)
   const rightRef = useRef<HTMLDivElement>(null)
 

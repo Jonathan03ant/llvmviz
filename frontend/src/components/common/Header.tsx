@@ -5,6 +5,7 @@ interface HeaderProps {
 
 const tabs = [
   { id: 'selectiondag', label: 'SelectionDAG' },
+  { id: 'globalisel', label: 'GlobalISel' },
   { id: 'scheduledag', label: 'ScheduleDAG', disabled: true },
   { id: 'irpasses', label: 'IR Passes', disabled: true },
   { id: 'mir', label: 'MIR', disabled: false },
