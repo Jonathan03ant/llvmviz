@@ -1,6 +1,12 @@
 import { useState, useEffect } from 'react'
 import { GraphCanvas, NodeDetailsPanel, layoutDag } from '../graph'
 
+interface DAGGraphIdentity {
+  title?: string
+  function?: string
+  block?: string
+}
+
 interface SelectionDAGViewerProps {
   nodes: any[]
   edges: any[]
@@ -8,6 +14,9 @@ interface SelectionDAGViewerProps {
   compareNodes?: any[]
   compareEdges?: any[]
   comparison?: any
+  graphs?: DAGGraphIdentity[]
+  selectedGraphIndex?: number
+  onGraphChange?: (graphIndex: number) => void
 }
 
 /**
@@ -20,7 +29,10 @@ export function SelectionDAGViewer({
   stage = 'isel',
   compareNodes = [],
   compareEdges = [],
-  comparison = null
+  comparison = null,
+  graphs = [],
+  selectedGraphIndex = 0,
+  onGraphChange
 }: SelectionDAGViewerProps) {
   // Check if we're in compare mode
   const isCompareMode = compareNodes.length > 0 && compareEdges.length > 0 && comparison
@@ -53,6 +65,16 @@ export function SelectionDAGViewer({
   const [compareOverlayPosition, setCompareOverlayPosition] = useState<{ x: number; y: number } | null>(null)
   const [compareIsDragging, setCompareIsDragging] = useState(false)
   const [compareDragOffset, setCompareDragOffset] = useState({ x: 0, y: 0 })
+
+  const graphOptions = graphs.map((graph, index) => {
+    const functionName = graph.function || '<unknown function>'
+    const blockName = graph.block || '<unnamed block>'
+
+    return {
+      value: String(index),
+      label: functionName + ' : ' + blockName
+    }
+  })
 
   // Layout primary stage nodes/edges
   useEffect(() => {
@@ -474,6 +496,33 @@ export function SelectionDAGViewer({
             boxShadow: '0 2px 8px rgba(0, 0, 0, 0.5)'
           }}
         >
+          {graphOptions.length > 0 && (
+            <>
+              <span style={{ color: '#e0e0e0', alignSelf: 'center' }}>DAG</span>
+              <select
+                value={String(selectedGraphIndex)}
+                onChange={(event) => onGraphChange?.(Number(event.target.value))}
+                disabled={graphOptions.length === 1}
+                style={{
+                  backgroundColor: '#000000',
+                  color: '#18a018',
+                  border: '1px solid #1a1a1a',
+                  borderRadius: '2px',
+                  padding: '2px 6px',
+                  fontFamily: 'JetBrains Mono, monospace',
+                  fontSize: '11px',
+                  cursor: graphOptions.length === 1 ? 'default' : 'pointer'
+                }}
+              >
+                {graphOptions.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <span style={{ width: '1px', backgroundColor: '#1a1a1a', margin: '1px 2px' }} />
+            </>
+          )}
           {(['all', 'isd', 'amdgpu', 'regs'] as const).map(tab => (
             <button
               key={tab}

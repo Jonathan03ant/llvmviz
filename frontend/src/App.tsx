@@ -1,8 +1,19 @@
 import { useState, useEffect, useRef } from 'react'
 import { Header, InputPanel, Footer, MIRModal } from './components/common'
 import type { TerminalLine } from './components/common'
-import { SelectionDAGViewer, MIRViewer } from './components/tools'
+import { SelectionDAGViewer, MIRViewer, MIRContentView, CompareMIRView } from './components/tools'
 import './App.css'
+
+interface DAGGraph {
+  nodes: any[]
+  edges: any[]
+  title?: string
+  function?: string
+  block?: string
+  compare_nodes?: any[]
+  compare_edges?: any[]
+  comparison?: any
+}
 
 function App() {
   const [activeTab, setActiveTab] = useState('selectiondag')
@@ -20,6 +31,17 @@ function App() {
   const [compareNodes, setCompareNodes] = useState<any[]>([])
   const [compareEdges, setCompareEdges] = useState<any[]>([])
   const [comparison, setComparison] = useState<any>(null)
+  const [dagGraphs, setDagGraphs] = useState<DAGGraph[]>([])
+  const [selectedDagGraphIndex, setSelectedDagGraphIndex] = useState(0)
+
+  // GlobalISel stage state (kept separate from SelectionDAG)
+  const [globalISelStage, setGlobalISelStage] = useState('irtranslator')
+  const [globalISelCompareEnabled, setGlobalISelCompareEnabled] = useState(false)
+  const [globalISelCompareStage, setGlobalISelCompareStage] = useState('legalizer')
+  const [globalISelMirContent, setGlobalISelMirContent] = useState('')
+  const [globalISelMirStage, setGlobalISelMirStage] = useState('')
+  const [globalISelCompareMirContent, setGlobalISelCompareMirContent] = useState('')
+  const [globalISelCompareMirStage, setGlobalISelCompareMirStage] = useState('')
 
   // Settings - dynamic arch/CPU
   const [llcConfigs, setLlcConfigs] = useState<Array<{id: string, name: string, description: string, path: string, default: boolean, default_arch: string | null, default_cpu: string | null}>>([])
@@ -218,6 +240,29 @@ function App() {
     }
   }, [llcPath, arch])
 
+  const displayDAGGraph = (graph: DAGGraph, graphIndex: number) => {
+    setSelectedDagGraphIndex(graphIndex)
+    setNodes(graph.nodes || [])
+    setEdges(graph.edges || [])
+
+    if (graph.compare_nodes && graph.compare_edges) {
+      setCompareNodes(graph.compare_nodes)
+      setCompareEdges(graph.compare_edges)
+      setComparison(graph.comparison || null)
+    } else {
+      setCompareNodes([])
+      setCompareEdges([])
+      setComparison(null)
+    }
+  }
+
+  const handleDAGGraphChange = (graphIndex: number) => {
+    const graph = dagGraphs[graphIndex]
+    if (graph) {
+      displayDAGGraph(graph, graphIndex)
+    }
+  }
+
   const handleRun = async () => {
     if (!irCode.trim()) {
       alert('Please paste LLVM IR code first')
@@ -277,23 +322,126 @@ function App() {
 
       // Only update graph if successful
       if (response.ok) {
-        setNodes(data.nodes || [])
-        setEdges(data.edges || [])
+        const graphs: DAGGraph[] = data.graphs?.length ? data.graphs : [data]
+        const flowGraphIndex = graphs.length > 1
+          ? graphs.findIndex(graph => graph.block?.toLowerCase() === 'flow')
+          : -1
+        const defaultGraphIndex = flowGraphIndex >= 0 ? flowGraphIndex : 0
 
-        // Update compare data if available
-        if (data.compare_nodes && data.compare_edges) {
-          setCompareNodes(data.compare_nodes)
-          setCompareEdges(data.compare_edges)
-          setComparison(data.comparison)
-        } else {
-          // Clear compare data if not in compare mode
-          setCompareNodes([])
-          setCompareEdges([])
-          setComparison(null)
-        }
+        setDagGraphs(graphs)
+        displayDAGGraph(graphs[defaultGraphIndex], defaultGraphIndex)
       }
     } catch (error) {
       console.error('Compile error:', error)
+      setTerminalOutput(prev => [...prev, {
+        type: 'error',
+        text: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        timestamp: new Date().toLocaleTimeString()
+      }])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleGlobalISelRun = async () => {
+    if (!irCode.trim()) {
+      alert('Please paste LLVM IR code first')
+      return
+    }
+
+    const requestedStages = globalISelCompareEnabled
+      ? [globalISelStage, globalISelCompareStage]
+      : [globalISelStage]
+
+    const passIdFor = (stageName: string) =>
+      stageName === 'regbankselect' ? 'amdgpu-regbankselect' : stageName
+
+    setLoading(true)
+    setTerminalOutput(requestedStages.map(stageName => ({
+      type: 'command' as const,
+      text: `${llcPath} -global-isel=1 -stop-after=${passIdFor(stageName)} -march=${arch} -mcpu=${cpu} input.ll -o output.mir`,
+      timestamp: new Date().toLocaleTimeString()
+    })))
+
+    const generateStage = async (stageName: string) => {
+      const response = await fetch('/api/generate_mir', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ir_code: irCode,
+          llc_path: llcPath.trim(),
+          arch,
+          mcpu: cpu,
+          selector: 'globalisel',
+          stop_after: stageName
+        })
+      })
+
+      const text = await response.text()
+      if (!text || text.trim().length === 0) {
+        throw new Error(`Empty response for ${stageName}`)
+      }
+
+      let data
+      try {
+        data = JSON.parse(text)
+      } catch (jsonError) {
+        console.error('JSON parse error:', jsonError)
+        console.error('Response text:', text.substring(0, 500))
+        throw new Error(`Invalid JSON response for ${stageName}: ${text.substring(0, 100)}`)
+      }
+
+      return { response, data, stageName }
+    }
+
+    try {
+      // The backend currently uses shared temporary MIR files, so generate
+      // stages sequentially to prevent the two snapshots from overwriting.
+      const results: Array<{
+        response: Response
+        data: any
+        stageName: string
+      }> = []
+
+      for (const stageName of requestedStages) {
+        results.push(await generateStage(stageName))
+      }
+
+      const combinedTerminalOutput = results.flatMap(
+        result => result.data.terminal_output || []
+      )
+      if (combinedTerminalOutput.length > 0) {
+        setTerminalOutput(combinedTerminalOutput)
+      }
+
+      const failedResult = results.find(
+        result => !result.response.ok || !result.data.success
+      )
+      if (failedResult) {
+        if (combinedTerminalOutput.length === 0) {
+          setTerminalOutput(prev => [...prev, {
+            type: 'error',
+            text: `Error generating ${failedResult.stageName}: ${failedResult.data.error || 'Unknown error'}`,
+            timestamp: new Date().toLocaleTimeString()
+          }])
+        }
+        return
+      }
+
+      const primary = results[0]
+      setGlobalISelMirContent(primary.data.mir)
+      setGlobalISelMirStage(primary.stageName)
+
+      if (results.length === 2) {
+        const secondary = results[1]
+        setGlobalISelCompareMirContent(secondary.data.mir)
+        setGlobalISelCompareMirStage(secondary.stageName)
+      } else {
+        setGlobalISelCompareMirContent('')
+        setGlobalISelCompareMirStage('')
+      }
+    } catch (error) {
+      console.error('GlobalISel error:', error)
       setTerminalOutput(prev => [...prev, {
         type: 'error',
         text: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -361,7 +509,7 @@ function App() {
       {/* Main Content Area */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden', backgroundColor: '#000000', position: 'relative' }}>
         {/* SelectionDAG: 2-panel layout (Input + Graph) */}
-        {activeTab === 'selectiondag' && (
+        {(activeTab === 'selectiondag' || activeTab === 'globalisel') && (
           <>
             {/* Left Panel - Input */}
             {!isLeftPanelCollapsed && (
@@ -445,6 +593,7 @@ function App() {
                   Running...
                 </div>
               )}
+              {activeTab === 'selectiondag' && (
               <SelectionDAGViewer
                 nodes={nodes}
                 edges={edges}
@@ -452,10 +601,59 @@ function App() {
                 compareNodes={compareNodes}
                 compareEdges={compareEdges}
                 comparison={comparison}
+                graphs={dagGraphs}
+                selectedGraphIndex={selectedDagGraphIndex}
+                onGraphChange={handleDAGGraphChange}
               />
+              )}
+              {activeTab === 'globalisel' && (
+                globalISelMirContent ? (
+                  globalISelCompareEnabled && globalISelCompareMirContent ? (
+                    <CompareMIRView
+                      tab1={{
+                        passId: globalISelMirStage,
+                        passName: globalISelMirStage,
+                        content: globalISelMirContent,
+                        loading: false
+                      }}
+                      tab2={{
+                        passId: globalISelCompareMirStage,
+                        passName: globalISelCompareMirStage,
+                        content: globalISelCompareMirContent,
+                        loading: false
+                      }}
+                    />
+                  ) : (
+                    <MIRContentView
+                      tabs={[{
+                        passId: globalISelMirStage,
+                        passName: globalISelMirStage,
+                        content: globalISelMirContent,
+                        loading: false
+                      }]}
+                      activeTabIndex={0}
+                      onTabChange={() => {}}
+                      onTabClose={() => {
+                        setGlobalISelMirContent('')
+                        setGlobalISelCompareMirContent('')
+                      }}
+                    />
+                  )
+                ) : (
+                  <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+                    <div>
+                      <div style={{ color: '#18a018', fontSize: '18px', fontWeight: 700 }}>GlobalISel MIR</div>
+                      <div style={{ marginTop: '8px', color: '#808080', fontSize: '12px', fontFamily: 'JetBrains Mono, monospace' }}>
+                        Choose a GlobalISel stage, then press Run
+                      </div>
+                    </div>
+                  </div>
+                )
+              )}
             </div>
           </>
         )}
+
 
         {/* MIR: Full-width viewer (handles its own layout internally) */}
         {activeTab === 'mir' && (
@@ -491,17 +689,17 @@ function App() {
         cpus={cpus}
         cpu={cpu}
         onCpuChange={setCpu}
-        stage={stage}
-        onStageChange={setStage}
-        compareEnabled={compareEnabled}
-        onCompareEnabledChange={setCompareEnabled}
-        compareStage={compareStage}
-        onCompareStageChange={setCompareStage}
-        onRun={handleRun}
+        stage={activeTab === 'globalisel' ? globalISelStage : stage}
+        onStageChange={activeTab === 'globalisel' ? setGlobalISelStage : setStage}
+        compareEnabled={activeTab === 'globalisel' ? globalISelCompareEnabled : compareEnabled}
+        onCompareEnabledChange={activeTab === 'globalisel' ? setGlobalISelCompareEnabled : setCompareEnabled}
+        compareStage={activeTab === 'globalisel' ? globalISelCompareStage : compareStage}
+        onCompareStageChange={activeTab === 'globalisel' ? setGlobalISelCompareStage : setCompareStage}
+        onRun={activeTab === 'globalisel' ? handleGlobalISelRun : handleRun}
         isLoading={loading || loadingTargets}
-        onViewMIR={handleViewMIR}
+        onViewMIR={activeTab === 'globalisel' ? () => {} : handleViewMIR}
         isMIRLoading={mirLoading}
-        mode={activeTab as 'selectiondag' | 'mir'}
+        mode={activeTab as 'selectiondag' | 'globalisel' | 'mir'}
         onDiscoverPasses={mirDiscoverHandler || undefined}
         isDiscovering={mirDiscovering}
         mirPasses={getAllMirPasses()}

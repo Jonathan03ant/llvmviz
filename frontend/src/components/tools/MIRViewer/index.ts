@@ -1,3 +1,5 @@
 export { MIRViewer } from './MIRViewer'
 export { MIRPassSidebar } from './MIRPassSidebar'
 export { MIRContentView } from './MIRContentView'
+export { CompareMIRView } from './MIRContentView'
+export type { MIRTab } from './MIRContentView'

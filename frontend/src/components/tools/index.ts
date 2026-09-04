@@ -5,5 +5,6 @@
 
 export { SelectionDAGViewer } from './SelectionDAGViewer'
 export { MIRViewer } from './MIRViewer'
+export { MIRContentView, CompareMIRView } from './MIRViewer'
 // export { IRPassViewer } from './IRPassViewer'      // Future
 // export { AssemblyViewer } from './AssemblyViewer'  // Future
