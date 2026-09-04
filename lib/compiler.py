@@ -38,11 +38,17 @@ def run_llc(ir_code: str, stage: str, llc_path: str, arch: str = 'amdgcn', mcpu:
         '-o', '/dev/null'
     ]
 
+    # ViewGraph always writes the DOT file first. Restrict PATH for this
+    # subprocess so desktop viewers such as xdg-open are not launched.
+    graph_env = os.environ.copy()
+    graph_env['PATH'] = os.path.dirname(os.path.abspath(llc_path))
+
     result = subprocess.run(
         cmd,
         check=True,
         capture_output=True,
-        text=True
+        text=True,
+        env=graph_env
     )
 
     terminal_output = []
