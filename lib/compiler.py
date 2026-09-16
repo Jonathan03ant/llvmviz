@@ -169,32 +169,33 @@ def generate_mir(
     Shows machine instructions with virtual registers
     This is the MIR before we enter the actual MIR pipeline..
     """
-    with open('/tmp/input.ll', 'w') as f:
-        f.write(ir_code)
+    # Isolate concurrent GlobalISel, SelectionDAG, and MIR-tab requests.
+    with tempfile.TemporaryDirectory(prefix="llvmviz-mir-") as work_dir:
+        input_path = os.path.join(work_dir, "input.ll")
+        output_mir = os.path.join(work_dir, "output.mir")
 
-    output_mir = '/tmp/output.mir'
+        with open(input_path, 'w') as f:
+            f.write(ir_code)
 
-    cmd = build_mir_command(
-        llc_path=llc_path,
-        input_path="/tmp/input.ll",
-        output_path=output_mir,
-        arch=arch,
-        mcpu=mcpu,
-        selector=selector,
-        stop_after=stop_after,
-    )
+        cmd = build_mir_command(
+            llc_path=llc_path,
+            input_path=input_path,
+            output_path=output_mir,
+            arch=arch,
+            mcpu=mcpu,
+            selector=selector,
+            stop_after=stop_after,
+        )
 
+        result = subprocess.run(
+            cmd,
+            check=True,
+            capture_output=True,
+            text=True
+        )
 
-    result = subprocess.run(
-        cmd,
-        check=True,
-        capture_output=True,
-        text=True
-    )
-
-    # Read generated MIR content
-    with open(output_mir, 'r') as f:
-        mir_content = f.read()
+        with open(output_mir, 'r') as f:
+            mir_content = f.read()
 
     # Build terminal output
     terminal_output = []
