@@ -148,7 +148,7 @@ def get_llc_configs():
     if os.path.exists('/home/jonathan/llvm-custom/llc-universal'):
         # Production server paths
         universal_path = '/home/jonathan/llvm-custom/llc-universal'
-        amdgpu_path = '/home/jonathan/llvm-custom/llc-debug'
+        amdgpu_path = universal_path
     else:
         # Development machine paths
         universal_path = '/utg/LLVMLearning/llvm-project/llvmviz-bin/bin/llc'
@@ -166,8 +166,8 @@ def get_llc_configs():
         },
         {
             "id": "amdgpu",
-            "name": "AMD GPU Build",
-            "description": "LLVM 23.0.0git - AMDGPU only",
+            "name": "AMD GPU Preset",
+            "description": "Universal build with AMDGPU selected",
             "path": amdgpu_path,
             "default": False,
             "default_arch": "amdgcn",
