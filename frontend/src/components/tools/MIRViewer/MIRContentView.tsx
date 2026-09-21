@@ -84,7 +84,7 @@ export function CompareMIRView({ tab1, tab2 }: { tab1: MIRTab, tab2: MIRTab }) {
   }
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ width: '100%', height: '100%', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <div style={{
         display: 'flex',
         borderBottom: '1px solid #1a1a1a',
@@ -100,12 +100,14 @@ export function CompareMIRView({ tab1, tab2 }: { tab1: MIRTab, tab2: MIRTab }) {
         </div>
       </div>
 
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}>
         <div
           ref={leftRef}
           onScroll={() => syncScroll('left')}
           style={{
             flex: 1,
+            minWidth: 0,
+            minHeight: 0,
             overflow: 'auto',
             padding: '20px',
             fontFamily: 'JetBrains Mono, monospace',
@@ -134,6 +136,8 @@ export function CompareMIRView({ tab1, tab2 }: { tab1: MIRTab, tab2: MIRTab }) {
           onScroll={() => syncScroll('right')}
           style={{
             flex: 1,
+            minWidth: 0,
+            minHeight: 0,
             overflow: 'auto',
             padding: '20px',
             fontFamily: 'JetBrains Mono, monospace',
@@ -317,6 +321,7 @@ export function MIRContentView({
       height: '100%',
       display: 'flex',
       flexDirection: 'column',
+      minHeight: 0,
       backgroundColor: '#000000'
     }}>
       {/* Header */}

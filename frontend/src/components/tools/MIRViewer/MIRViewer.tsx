@@ -298,6 +298,7 @@ export function MIRViewer({ irCode, llcPath, arch, mcpu, onIRCodeChange, termina
       flexDirection: 'column',
       width: '100%',
       height: '100%',
+      minHeight: 0,
       backgroundColor: '#0a0a0a',
       position: 'relative'
     }}>
@@ -305,6 +306,7 @@ export function MIRViewer({ irCode, llcPath, arch, mcpu, onIRCodeChange, termina
       <div style={{
         display: 'flex',
         flex: 1,
+        minHeight: 0,
         overflow: 'hidden',
         position: 'relative'
       }}>
@@ -334,7 +336,7 @@ export function MIRViewer({ irCode, llcPath, arch, mcpu, onIRCodeChange, termina
         </div>
 
         {/* Right Content - MIR Display */}
-        <div style={{ flex: 1, overflow: 'hidden' }}>
+        <div style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden' }}>
           <MIRContentView
             tabs={tabs}
             activeTabIndex={activeTabIndex}

@@ -381,13 +381,22 @@ function App() {
       // Only update graph if successful
       if (response.ok) {
         const graphs: DAGGraph[] = data.graphs?.length ? data.graphs : [data]
+        const selectedGraph = dagGraphs[selectedDagGraphIndex]
+        const preservedGraphIndex = selectedGraph
+          ? graphs.findIndex(graph =>
+              graph.function === selectedGraph.function &&
+              graph.block === selectedGraph.block
+            )
+          : -1
         const flowGraphIndex = graphs.length > 1
           ? graphs.findIndex(graph => graph.block?.toLowerCase() === 'flow')
           : -1
-        const defaultGraphIndex = flowGraphIndex >= 0 ? flowGraphIndex : 0
+        const nextGraphIndex = preservedGraphIndex >= 0
+          ? preservedGraphIndex
+          : flowGraphIndex >= 0 ? flowGraphIndex : 0
 
         setDagGraphs(graphs)
-        displayDAGGraph(graphs[defaultGraphIndex], defaultGraphIndex)
+        displayDAGGraph(graphs[nextGraphIndex], nextGraphIndex)
       }
     } catch (error) {
       console.error('Compile error:', error)
@@ -659,7 +668,7 @@ function App() {
       />
 
       {/* Main Content Area */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', backgroundColor: '#000000', position: 'relative' }}>
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden', backgroundColor: '#000000', position: 'relative' }}>
         {/* SelectionDAG: 2-panel layout (Input + Graph) */}
         {(activeTab === 'selectiondag' || activeTab === 'globalisel') && (
           <>
