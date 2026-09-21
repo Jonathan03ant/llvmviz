@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from 'react'
 interface HeaderProps {
   activeTab: string
   onTabChange: (tab: string) => void
+  onSaveSession: () => boolean
+  hasSavedSession: boolean
 }
 
 const tabs = [
@@ -14,7 +16,7 @@ const tabs = [
   { id: 'assembly', label: 'Assembly', disabled: true },
 ]
 
-export function Header({ activeTab, onTabChange }: HeaderProps) {
+export function Header({ activeTab, onTabChange, onSaveSession, hasSavedSession }: HeaderProps) {
   const [openMenu, setOpenMenu] = useState<'settings' | 'help' | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -84,13 +86,15 @@ export function Header({ activeTab, onTabChange }: HeaderProps) {
                   <span>Theme</span>
                   <span className="text-[#18a018]">Dark</span>
                 </div>
-                <div className="px-2 py-px flex items-center justify-between leading-4 text-[#808080]">
-                  <span>Default target</span>
-                  <span className="text-[#606060]">—</span>
-                </div>
-                <div className="px-2 py-px flex items-center justify-between leading-4 text-[#808080]">
-                  <span>Restore session</span>
-                  <span className="text-[#606060]">Off</span>
+                <button
+                  type="button"
+                  onClick={() => onSaveSession()}
+                  className={`w-full px-2 py-px text-left leading-4 hover:bg-[#111111] transition-colors ${hasSavedSession ? 'text-[#18a018]' : 'text-[#808080] hover:text-[#18a018]'}`}
+                >
+                  {hasSavedSession ? 'Session saved' : 'Save current session'}
+                </button>
+                <div className="w-full px-2 py-px text-left leading-4 text-[#606060]">
+                  Clear saved session
                 </div>
               </div>
             )}

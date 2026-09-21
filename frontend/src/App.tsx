@@ -15,6 +15,8 @@ interface DAGGraph {
   comparison?: any
 }
 
+const SAVED_SESSION_KEY = 'llvmviz.saved-session.v1'
+
 function App() {
   const [activeTab, setActiveTab] = useState('selectiondag')
   const [nodes, setNodes] = useState<any[]>([])
@@ -52,6 +54,7 @@ function App() {
   const [arch, setArch] = useState('')
   const [cpu, setCpu] = useState('')
   const [loadingTargets, setLoadingTargets] = useState(false)
+  const [hasSavedSession, setHasSavedSession] = useState(false)
 
   // MIR viewer state
   const [showMIRModal, setShowMIRModal] = useState(false)
@@ -114,14 +117,69 @@ function App() {
         const data = await response.json()
         if (data.configs) {
           setLlcConfigs(data.configs)
-          // Set default config
+
+          let savedSession: any = null
+          try {
+            const savedSessionJson = localStorage.getItem(SAVED_SESSION_KEY)
+            const parsedSession = savedSessionJson ? JSON.parse(savedSessionJson) : null
+            if (parsedSession?.version === 1) {
+              savedSession = parsedSession
+            }
+          } catch (error) {
+            console.error('Failed to restore saved session:', error)
+          }
+
           const defaultConfig = data.configs.find((c: any) => c.default)
-          if (defaultConfig) {
-            setSelectedLlcConfig(defaultConfig.id)
-            setLlcPath(defaultConfig.path)
-            // Set default arch/cpu based on config
-            setArch(defaultConfig.default_arch || '')
-            setCpu(defaultConfig.default_cpu || '')
+          const savedConfig = data.configs.find(
+            (config: any) => config.id === savedSession?.compiler?.configId
+          )
+          const initialConfig = savedConfig || defaultConfig
+
+          if (initialConfig) {
+            setSelectedLlcConfig(initialConfig.id)
+            setLlcPath(initialConfig.path)
+            setArch(savedConfig && typeof savedSession?.compiler?.arch === 'string'
+              ? savedSession.compiler.arch
+              : initialConfig.default_arch || '')
+            setCpu(savedConfig && typeof savedSession?.compiler?.cpu === 'string'
+              ? savedSession.compiler.cpu
+              : initialConfig.default_cpu || '')
+          }
+
+          if (savedSession) {
+            setHasSavedSession(true)
+
+            if (typeof savedSession.irCode === 'string') {
+              setIrCode(savedSession.irCode)
+            }
+
+            if (['selectiondag', 'globalisel', 'mir'].includes(savedSession.activeTab)) {
+              setActiveTab(savedSession.activeTab)
+            }
+
+            if (typeof savedSession.selectionDAG?.stage === 'string') {
+              setStage(savedSession.selectionDAG.stage)
+            }
+            if (typeof savedSession.selectionDAG?.compareEnabled === 'boolean') {
+              setCompareEnabled(savedSession.selectionDAG.compareEnabled)
+            }
+            if (typeof savedSession.selectionDAG?.compareStage === 'string') {
+              setCompareStage(savedSession.selectionDAG.compareStage)
+            }
+
+            if (typeof savedSession.globalISel?.stage === 'string') {
+              setGlobalISelStage(savedSession.globalISel.stage)
+            }
+            if (typeof savedSession.globalISel?.compareEnabled === 'boolean') {
+              setGlobalISelCompareEnabled(savedSession.globalISel.compareEnabled)
+            }
+            if (typeof savedSession.globalISel?.compareStage === 'string') {
+              setGlobalISelCompareStage(savedSession.globalISel.compareStage)
+            }
+
+            if (typeof savedSession.mir?.selectedPass === 'string') {
+              setSelectedMirPass(savedSession.mir.selectedPass)
+            }
           }
         }
       } catch (error) {
@@ -232,13 +290,13 @@ function App() {
   // Trigger fetch when llc path or arch changes
   useEffect(() => {
     fetchArchitectures(llcPath)
-  }, [llcPath])
+  }, [llcPath, selectedLlcConfig])
 
   useEffect(() => {
     if (arch) {
       fetchCpus(llcPath, arch)
     }
-  }, [llcPath, arch])
+  }, [llcPath, arch, selectedLlcConfig])
 
   const displayDAGGraph = (graph: DAGGraph, graphIndex: number) => {
     setSelectedDagGraphIndex(graphIndex)
@@ -501,10 +559,48 @@ function App() {
     }
   }
 
+  const handleSaveSession = () => {
+    try {
+      localStorage.setItem(SAVED_SESSION_KEY, JSON.stringify({
+        version: 1,
+        irCode,
+        activeTab,
+        compiler: {
+          configId: selectedLlcConfig,
+          arch,
+          cpu,
+        },
+        selectionDAG: {
+          stage,
+          compareEnabled,
+          compareStage,
+        },
+        globalISel: {
+          stage: globalISelStage,
+          compareEnabled: globalISelCompareEnabled,
+          compareStage: globalISelCompareStage,
+        },
+        mir: {
+          selectedPass: selectedMirPass,
+        },
+      }))
+      setHasSavedSession(true)
+      return true
+    } catch (error) {
+      console.error('Failed to save session:', error)
+      return false
+    }
+  }
+
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Header with Tabs */}
-      <Header activeTab={activeTab} onTabChange={setActiveTab} />
+      <Header
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onSaveSession={handleSaveSession}
+        hasSavedSession={hasSavedSession}
+      />
 
       {/* Main Content Area */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden', backgroundColor: '#000000', position: 'relative' }}>
