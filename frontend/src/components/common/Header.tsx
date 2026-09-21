@@ -5,6 +5,7 @@ interface HeaderProps {
   onTabChange: (tab: string) => void
   onSaveSession: () => boolean
   hasSavedSession: boolean
+  onClearSession: () => void
 }
 
 const tabs = [
@@ -16,7 +17,7 @@ const tabs = [
   { id: 'assembly', label: 'Assembly', disabled: true },
 ]
 
-export function Header({ activeTab, onTabChange, onSaveSession, hasSavedSession }: HeaderProps) {
+export function Header({ activeTab, onTabChange, onSaveSession, hasSavedSession, onClearSession }: HeaderProps) {
   const [openMenu, setOpenMenu] = useState<'settings' | 'help' | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -93,9 +94,13 @@ export function Header({ activeTab, onTabChange, onSaveSession, hasSavedSession 
                 >
                   {hasSavedSession ? 'Session saved' : 'Save current session'}
                 </button>
-                <div className="w-full px-2 py-px text-left leading-4 text-[#606060]">
-                  Clear saved session
-                </div>
+                <button
+                  type="button"
+                  onClick={onClearSession}
+                  className="w-full px-2 py-px text-left leading-4 text-[#808080] hover:text-[#ef4444] hover:bg-[#111111] transition-colors"
+                >
+                  Clear session
+                </button>
               </div>
             )}
           </div>

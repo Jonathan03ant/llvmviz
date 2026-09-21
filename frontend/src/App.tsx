@@ -592,6 +592,61 @@ function App() {
     }
   }
 
+  const handleClearSession = () => {
+    const confirmed = window.confirm(
+      'Clear the current session? This removes the saved IR and resets the workspace.'
+    )
+    if (!confirmed) return
+
+    localStorage.removeItem(SAVED_SESSION_KEY)
+    setHasSavedSession(false)
+
+    setActiveTab('selectiondag')
+    setIrCode('')
+    setStage('isel')
+    setTerminalOutput([])
+    setNodes([])
+    setEdges([])
+    setCompareEnabled(false)
+    setCompareStage('legalize')
+    setCompareNodes([])
+    setCompareEdges([])
+    setComparison(null)
+    setDagGraphs([])
+    setSelectedDagGraphIndex(0)
+
+    setGlobalISelStage('irtranslator')
+    setGlobalISelCompareEnabled(false)
+    setGlobalISelCompareStage('legalizer')
+    setGlobalISelMirContent('')
+    setGlobalISelMirStage('')
+    setGlobalISelCompareMirContent('')
+    setGlobalISelCompareMirStage('')
+
+    setShowMIRModal(false)
+    setMirContent('')
+    setMirPipeline(null)
+    setSelectedMirPass('')
+    setMirDiscoverHandler(null)
+    setMirDiscovering(false)
+    setMirPassSelectHandler(null)
+
+    const defaultConfig = llcConfigs.find(config => config.default)
+    if (defaultConfig) {
+      if (defaultConfig.path !== llcPath) {
+        setArchitectures([])
+      }
+      setCpus([])
+      setSelectedLlcConfig(defaultConfig.id)
+      setLlcPath(defaultConfig.path)
+      setArch(defaultConfig.default_arch || '')
+      setCpu(defaultConfig.default_cpu || '')
+    }
+
+    setLeftPanelWidth(40)
+    setIsLeftPanelCollapsed(false)
+  }
+
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Header with Tabs */}
@@ -600,6 +655,7 @@ function App() {
         onTabChange={setActiveTab}
         onSaveSession={handleSaveSession}
         hasSavedSession={hasSavedSession}
+        onClearSession={handleClearSession}
       />
 
       {/* Main Content Area */}
