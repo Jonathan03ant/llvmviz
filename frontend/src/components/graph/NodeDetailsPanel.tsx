@@ -12,7 +12,7 @@ interface NodeDetailsPanelProps {
 
 /**
  * Floating draggable panel showing node details
- * Displays: opcode, node_num, output_type, inputs, outputs
+ * Displays: opcode, LLVM node class, node_num, output_type, inputs, outputs
  */
 export function NodeDetailsPanel({
   node,
@@ -62,6 +62,9 @@ export function NodeDetailsPanel({
         </h3>
         <p style={{ color: '#888', margin: 0, fontSize: '12px', fontFamily: 'JetBrains Mono, monospace' }}>
           {node.data.node_num} | {Array.isArray(node.data.output_types) ? node.data.output_types.join(', ') : node.data.output_types}
+        </p>
+        <p style={{ color: '#18a018', margin: '5px 0 0', fontSize: '11px', fontFamily: 'JetBrains Mono, monospace' }}>
+          {node.data.node_class || 'unknown'}
         </p>
       </div>
 

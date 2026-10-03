@@ -7,6 +7,15 @@ interface DAGGraphIdentity {
   block?: string
 }
 
+type NodeClass =
+  | 'generic-isd'
+  | 'target-isd'
+  | 'target-independent-machine'
+  | 'target-machine'
+  | 'unknown'
+
+type NodeCategory = 'generic' | 'target' | 'regs'
+
 interface SelectionDAGViewerProps {
   nodes: any[]
   edges: any[]
@@ -57,8 +66,8 @@ export function SelectionDAGViewer({
   const [overlayPosition, setOverlayPosition] = useState<{ x: number; y: number } | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
-  const [activeTab, setActiveTab] = useState<'all' | 'isd' | 'amdgpu' | 'regs' | null>(null)
-  const [compareActiveTab, setCompareActiveTab] = useState<'all' | 'isd' | 'amdgpu' | 'regs' | null>(null)
+  const [activeTab, setActiveTab] = useState<'all' | NodeCategory | null>(null)
+  const [compareActiveTab, setCompareActiveTab] = useState<'all' | NodeCategory | null>(null)
 
   // Compare graph selection state
   const [compareSelectedNodeId, setCompareSelectedNodeId] = useState<string | null>(null)
@@ -343,20 +352,21 @@ export function SelectionDAGViewer({
   const calculateStats = (nodeSet: any[], edgeSet: any[]) => {
     if (nodeSet.length === 0) return null
 
-    // Count AMDGPU-specific vs generic ISD nodes
-    let amdgpuCount = 0
-    let isdCount = 0
+    let genericCount = 0
+    let targetCount = 0
+    let unknownCount = 0
     const physicalRegs = new Set<string>()
     const virtualRegs = new Set<string>()
 
-    nodes.forEach(node => {
-      const opcode = node.data?.opcode || node.data?.label || ''
+    nodeSet.forEach(node => {
+      const nodeClass = (node.data?.node_class || 'unknown') as NodeClass
 
-      // Check if AMDGPU-specific
-      if (opcode.includes('AMDGPUISD') || opcode.includes('AMDGPU') || opcode.startsWith('SI_') || opcode.startsWith('V_')) {
-        amdgpuCount++
+      if (nodeClass === 'generic-isd' || nodeClass === 'target-independent-machine') {
+        genericCount++
+      } else if (nodeClass === 'target-isd' || nodeClass === 'target-machine') {
+        targetCount++
       } else {
-        isdCount++
+        unknownCount++
       }
 
       // Extract registers from node data
@@ -378,8 +388,9 @@ export function SelectionDAGViewer({
     return {
       nodeCount: nodeSet.length,
       edgeCount: edgeSet.length,
-      amdgpuCount,
-      isdCount,
+      genericCount,
+      targetCount,
+      unknownCount,
       physicalCount: physicalRegs.size,
       virtualCount: virtualRegs.size
     }
@@ -390,9 +401,10 @@ export function SelectionDAGViewer({
   void compareStats // Future: display stats for compare graph
 
   // Helper: Get nodes by category for any node set
-  const getNodesByCategory = (nodeSet: any[], category: 'isd' | 'amdgpu' | 'regs') => {
+  const getNodesByCategory = (nodeSet: any[], category: NodeCategory) => {
     return nodeSet.filter(node => {
       const opcode = node.data?.opcode || node.data?.label || ''
+      const nodeClass = (node.data?.node_class || 'unknown') as NodeClass
 
       // Skip non-operation nodes (Register, Constant, EntryToken, etc.)
       if (!opcode || opcode.startsWith('Register') || opcode.startsWith('Constant') ||
@@ -400,20 +412,53 @@ export function SelectionDAGViewer({
         return false
       }
 
-      if (category === 'isd') {
-        // Generic ISD operations
-        return !opcode.includes('AMDGPUISD') && !opcode.includes('AMDGPU') &&
-               !opcode.startsWith('SI_') && !opcode.startsWith('V_')
-      } else if (category === 'amdgpu') {
-        // AMDGPU-specific operations
-        return opcode.includes('AMDGPUISD') || opcode.includes('AMDGPU') ||
-               opcode.startsWith('SI_') || opcode.startsWith('V_')
+      if (category === 'generic') {
+        return nodeClass === 'generic-isd' || nodeClass === 'target-independent-machine'
+      } else if (category === 'target') {
+        return nodeClass === 'target-isd' || nodeClass === 'target-machine'
       } else if (category === 'regs') {
         // Register operations only
         return opcode.includes('CopyFromReg') || opcode.includes('CopyToReg') ||
                opcode.includes('COPY')
       }
       return false
+    })
+  }
+
+  const renderOpcodeGroups = (nodeSet: any[], category: 'generic' | 'target') => {
+    const groups: { nodeClass: NodeClass; label: string }[] = category === 'generic'
+      ? [
+          { nodeClass: 'generic-isd', label: 'Generic ISD' },
+          { nodeClass: 'target-independent-machine', label: 'Target-Independent Machine' }
+        ]
+      : [
+          { nodeClass: 'target-isd', label: 'Target ISD' },
+          { nodeClass: 'target-machine', label: 'Target Machine Instructions' }
+        ]
+
+    const categoryNodes = getNodesByCategory(nodeSet, category)
+
+    return groups.map(({ nodeClass, label }, groupIndex) => {
+      const opcodes = Array.from(new Set(
+        categoryNodes
+          .filter(node => node.data?.node_class === nodeClass)
+          .map(node => node.data?.opcode || node.data?.label || node.id)
+      )).sort()
+
+      return (
+        <div key={nodeClass} style={{ marginTop: groupIndex === 0 ? 0 : '10px' }}>
+          <div style={{ color: '#18a018', fontWeight: '600', marginBottom: '6px', fontSize: '10px', fontFamily: 'Inter, sans-serif' }}>
+            {label} ({opcodes.length})
+          </div>
+          {opcodes.length === 0 ? (
+            <div style={{ color: '#666', padding: '3px 0' }}>None</div>
+          ) : opcodes.map((opcode, idx) => (
+            <div key={String(opcode)} style={{ padding: '3px 0', borderBottom: idx < opcodes.length - 1 ? '1px solid #0a0a0a' : 'none', color: '#f0f0f0' }}>
+              {opcode}
+            </div>
+          ))}
+        </div>
+      )
     })
   }
 
@@ -523,7 +568,7 @@ export function SelectionDAGViewer({
               <span style={{ width: '1px', backgroundColor: '#1a1a1a', margin: '1px 2px' }} />
             </>
           )}
-          {(['all', 'isd', 'amdgpu', 'regs'] as const).map(tab => (
+          {(['all', 'generic', 'target', 'regs'] as const).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(activeTab === tab ? null : tab)}
@@ -553,8 +598,8 @@ export function SelectionDAGViewer({
               }}
             >
               {tab === 'all' ? 'All' :
-               tab === 'isd' ? 'Generic ISD' :
-               tab === 'amdgpu' ? 'Target-Specific' : 'Registers'}
+               tab === 'generic' ? 'Generic' :
+               tab === 'target' ? 'Target-Specific' : 'Registers'}
             </button>
           ))}
         </div>
@@ -578,40 +623,7 @@ export function SelectionDAGViewer({
               boxShadow: '0 2px 8px rgba(0, 0, 0, 0.5)'
             }}
           >
-            {activeTab === 'isd' && (() => {
-              const opcodes = Array.from(new Set(
-                getNodesByCategory(nodes, 'isd').map(node => node.data?.opcode || node.data?.label || node.id)
-              )).sort()
-              return (
-                <div>
-                  <div style={{ color: '#18a018', fontWeight: '600', marginBottom: '6px', fontSize: '10px', fontFamily: 'Inter, sans-serif' }}>
-                    Generic ISD Opcodes ({opcodes.length})
-                  </div>
-                  {opcodes.map((opcode, idx) => (
-                    <div key={idx} style={{ padding: '3px 0', borderBottom: idx < opcodes.length - 1 ? '1px solid #0a0a0a' : 'none', color: '#f0f0f0' }}>
-                      {opcode}
-                    </div>
-                  ))}
-                </div>
-              )
-            })()}
-            {activeTab === 'amdgpu' && (() => {
-              const opcodes = Array.from(new Set(
-                getNodesByCategory(nodes, 'amdgpu').map(node => node.data?.opcode || node.data?.label || node.id)
-              )).sort()
-              return (
-                <div>
-                  <div style={{ color: '#18a018', fontWeight: '600', marginBottom: '6px', fontSize: '10px', fontFamily: 'Inter, sans-serif' }}>
-                    Target-Specific Opcodes ({opcodes.length})
-                  </div>
-                  {opcodes.map((opcode, idx) => (
-                    <div key={idx} style={{ padding: '3px 0', borderBottom: idx < opcodes.length - 1 ? '1px solid #0a0a0a' : 'none', color: '#f0f0f0' }}>
-                      {opcode}
-                    </div>
-                  ))}
-                </div>
-              )
-            })()}
+            {(activeTab === 'generic' || activeTab === 'target') && renderOpcodeGroups(nodes, activeTab)}
             {activeTab === 'regs' && (() => {
               const regs = getRegisterList(nodes)
               return (
@@ -686,8 +698,9 @@ export function SelectionDAGViewer({
             {stats.nodeCount} nodes, {stats.edgeCount} edges
           </div>
           <div>
-            {stats.isdCount} generic ISD, {stats.amdgpuCount} target-specific
+            {stats.genericCount} generic, {stats.targetCount} target-specific
           </div>
+          {stats.unknownCount > 0 && <div>{stats.unknownCount} unclassified</div>}
           <div>
             phys: {stats.physicalCount} | virt: {stats.virtualCount}
           </div>
@@ -730,7 +743,7 @@ export function SelectionDAGViewer({
               fontSize: '11px',
               boxShadow: '0 2px 8px rgba(0, 0, 0, 0.5)'
             }}>
-              {(['all', 'isd', 'amdgpu', 'regs'] as const).map(tab => (
+              {(['all', 'generic', 'target', 'regs'] as const).map(tab => (
                 <button
                   key={tab}
                   onClick={() => setCompareActiveTab(compareActiveTab === tab ? null : tab)}
@@ -760,8 +773,8 @@ export function SelectionDAGViewer({
                   }}
                 >
                   {tab === 'all' ? 'All' :
-                   tab === 'isd' ? 'Generic ISD' :
-                   tab === 'amdgpu' ? 'Target-Specific' : 'Registers'}
+                   tab === 'generic' ? 'Generic' :
+                   tab === 'target' ? 'Target-Specific' : 'Registers'}
                 </button>
               ))}
             </div>
@@ -783,40 +796,7 @@ export function SelectionDAGViewer({
                 color: '#c8c8c8',
                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.5)'
               }}>
-                {compareActiveTab === 'isd' && (() => {
-                  const opcodes = Array.from(new Set(
-                    getNodesByCategory(compareNodes, 'isd').map(node => node.data?.opcode || node.data?.label || node.id)
-                  )).sort()
-                  return (
-                    <div>
-                      <div style={{ color: '#18a018', fontWeight: '600', marginBottom: '6px', fontSize: '10px', fontFamily: 'Inter, sans-serif' }}>
-                        Generic ISD Opcodes ({opcodes.length})
-                      </div>
-                      {opcodes.map((opcode, idx) => (
-                        <div key={idx} style={{ padding: '3px 0', borderBottom: idx < opcodes.length - 1 ? '1px solid #0a0a0a' : 'none', color: '#c8c8c8' }}>
-                          {opcode}
-                        </div>
-                      ))}
-                    </div>
-                  )
-                })()}
-                {compareActiveTab === 'amdgpu' && (() => {
-                  const opcodes = Array.from(new Set(
-                    getNodesByCategory(compareNodes, 'amdgpu').map(node => node.data?.opcode || node.data?.label || node.id)
-                  )).sort()
-                  return (
-                    <div>
-                      <div style={{ color: '#18a018', fontWeight: '600', marginBottom: '6px', fontSize: '10px', fontFamily: 'Inter, sans-serif' }}>
-                        Target-Specific Opcodes ({opcodes.length})
-                      </div>
-                      {opcodes.map((opcode, idx) => (
-                        <div key={idx} style={{ padding: '3px 0', borderBottom: idx < opcodes.length - 1 ? '1px solid #0a0a0a' : 'none', color: '#c8c8c8' }}>
-                          {opcode}
-                        </div>
-                      ))}
-                    </div>
-                  )
-                })()}
+                {(compareActiveTab === 'generic' || compareActiveTab === 'target') && renderOpcodeGroups(compareNodes, compareActiveTab)}
                 {compareActiveTab === 'regs' && (() => {
                   const regs = getRegisterList(compareNodes)
                   return (
