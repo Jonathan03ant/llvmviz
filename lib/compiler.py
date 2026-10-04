@@ -14,9 +14,9 @@ DAG_STAGE_FLAGS = {
 }
 
 GLOBAL_ISEL_STAGES = {
-    "irtranslator": "irtranslator",
+    "irtranslator": "ir-translator",
     "legalizer": "legalizer",
-    "regbankselect": "amdgpu-regbankselect",
+    "regbankselect": "amdgpu-reg-bank-select",
     "instruction-select": "instruction-select",
     "finalize-isel": "finalize-isel",
 }
