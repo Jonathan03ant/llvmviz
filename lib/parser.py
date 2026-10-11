@@ -13,13 +13,19 @@ def extract_label(line: str):
         return match.group(1)
     return ""
 
-def extract_node_class(line: str):
-    """Extract LLVM's exact SelectionDag node classification
-       This required custom LLVM patch with added ClassAttr
-       #on SelectionDAGNodes lib
-    """
-    match = re.search(r'llvm_node_class="([^"]+)"', line)
-    return match.group(1) if match else "unknown"
+def extract_raw_opcode(line: str):
+    """Extract LLVM's numeric opcode from a SelectionDAG DOT node."""
+    match = re.search(r'llvm_opcode="(\d+)"', line)
+    return int(match.group(1)) if match else None
+
+def extract_is_machine_opcode(line: str):
+    """Return whether the DOT node uses the machine-opcode domain."""
+    match = re.search(r'llvm_is_machine_opcode="(true|false)"', line)
+
+    if not match:
+        return None
+
+    return match.group(1) == "true"
 
 
 def extract_output_types(label: str):
@@ -83,14 +89,16 @@ def parse_dot(dot_file_path: str):
                 node_id = line.split()[0]                               # Node0x5bea79575b90
                 label = extract_label(line)                             # label="{EntryToken|t0|{<d0>ch|<d1>glue}}"];
                 opcode, node_num, output_types = parse_label(label)
-                node_class = extract_node_class(line)                   # target/generic ISD and machine instr
+                raw_opcode = extract_raw_opcode(line)                   # Raw Opcode
+                is_machine_opcode = extract_is_machine_opcode(line)
                 nodes.append({
                     "id": node_id,
                     "position": {"x": 0, "y": 0},
                     "data": {
                         "label": opcode,
                         "opcode": opcode,
-                        "node_class": node_class,
+                        "raw_opcode": raw_opcode,
+                        "is_machine_opcode": is_machine_opcode,
                         "node_num": node_num,
                         "output_types": output_types
                     }
