@@ -7,7 +7,7 @@
 
   [![Live Demo](https://img.shields.io/badge/demo-llvmviz.org-blue.svg)](https://llvmviz.org)
   [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-  [![GitHub release](https://img.shields.io/github/v/release/jonathan03ant/llvmviz.svg)](https://github.com/jonathan03ant/llvmviz/releases)
+  [![Latest release](https://img.shields.io/github/v/release/Jonathan03ant/llvmviz?display_name=tag&sort=semver&label=release&cacheSeconds=300)](https://github.com/Jonathan03ant/llvmviz/releases/latest)
 
   [Live Demo](https://llvmviz.org) • [Documentation](https://github.com/jonathan03ant/llvmviz) • [Report Bug](https://github.com/jonathan03ant/llvmviz/issues)
 </div>
