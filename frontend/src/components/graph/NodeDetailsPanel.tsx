@@ -23,6 +23,13 @@ export function NodeDetailsPanel({
   isDragging,
   onMouseDown,
 }: NodeDetailsPanelProps) {
+  const opcodeDomain = node.data.is_machine_opcode === true
+    ? 'Machine opcode'
+    : node.data.is_machine_opcode === false
+      ? 'SelectionDAG opcode'
+      : 'Unknown opcode domain'
+  const opcodeId = node.data.opcode_id ?? node.data.raw_opcode
+
   return (
     <div
       onMouseDown={onMouseDown}
@@ -64,7 +71,7 @@ export function NodeDetailsPanel({
           {node.data.node_num} | {Array.isArray(node.data.output_types) ? node.data.output_types.join(', ') : node.data.output_types}
         </p>
         <p style={{ color: '#18a018', margin: '5px 0 0', fontSize: '11px', fontFamily: 'JetBrains Mono, monospace' }}>
-          {node.data.node_class || 'unknown'}
+          {opcodeDomain}{opcodeId != null ? ` | ID ${opcodeId}` : ''}
         </p>
       </div>
 

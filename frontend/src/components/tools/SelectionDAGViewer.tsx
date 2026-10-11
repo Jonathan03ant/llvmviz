@@ -7,14 +7,7 @@ interface DAGGraphIdentity {
   block?: string
 }
 
-type NodeClass =
-  | 'generic-isd'
-  | 'target-isd'
-  | 'target-independent-machine'
-  | 'target-machine'
-  | 'unknown'
-
-type NodeCategory = 'generic' | 'target' | 'regs'
+type NodeCategory = 'dag' | 'machine' | 'regs'
 
 interface SelectionDAGViewerProps {
   nodes: any[]
@@ -352,19 +345,19 @@ export function SelectionDAGViewer({
   const calculateStats = (nodeSet: any[], edgeSet: any[]) => {
     if (nodeSet.length === 0) return null
 
-    let genericCount = 0
-    let targetCount = 0
+    let selectionDAGCount = 0
+    let machineCount = 0
     let unknownCount = 0
     const physicalRegs = new Set<string>()
     const virtualRegs = new Set<string>()
 
     nodeSet.forEach(node => {
-      const nodeClass = (node.data?.node_class || 'unknown') as NodeClass
+      const isMachineOpcode = node.data?.is_machine_opcode
 
-      if (nodeClass === 'generic-isd' || nodeClass === 'target-independent-machine') {
-        genericCount++
-      } else if (nodeClass === 'target-isd' || nodeClass === 'target-machine') {
-        targetCount++
+      if (isMachineOpcode === true) {
+        machineCount++
+      } else if (isMachineOpcode === false) {
+        selectionDAGCount++
       } else {
         unknownCount++
       }
@@ -388,8 +381,8 @@ export function SelectionDAGViewer({
     return {
       nodeCount: nodeSet.length,
       edgeCount: edgeSet.length,
-      genericCount,
-      targetCount,
+      selectionDAGCount,
+      machineCount,
       unknownCount,
       physicalCount: physicalRegs.size,
       virtualCount: virtualRegs.size
@@ -404,7 +397,7 @@ export function SelectionDAGViewer({
   const getNodesByCategory = (nodeSet: any[], category: NodeCategory) => {
     return nodeSet.filter(node => {
       const opcode = node.data?.opcode || node.data?.label || ''
-      const nodeClass = (node.data?.node_class || 'unknown') as NodeClass
+      const isMachineOpcode = node.data?.is_machine_opcode
 
       // Skip non-operation nodes (Register, Constant, EntryToken, etc.)
       if (!opcode || opcode.startsWith('Register') || opcode.startsWith('Constant') ||
@@ -412,10 +405,10 @@ export function SelectionDAGViewer({
         return false
       }
 
-      if (category === 'generic') {
-        return nodeClass === 'generic-isd' || nodeClass === 'target-independent-machine'
-      } else if (category === 'target') {
-        return nodeClass === 'target-isd' || nodeClass === 'target-machine'
+      if (category === 'dag') {
+        return isMachineOpcode === false
+      } else if (category === 'machine') {
+        return isMachineOpcode === true
       } else if (category === 'regs') {
         // Register operations only
         return opcode.includes('CopyFromReg') || opcode.includes('CopyToReg') ||
@@ -425,41 +418,27 @@ export function SelectionDAGViewer({
     })
   }
 
-  const renderOpcodeGroups = (nodeSet: any[], category: 'generic' | 'target') => {
-    const groups: { nodeClass: NodeClass; label: string }[] = category === 'generic'
-      ? [
-          { nodeClass: 'generic-isd', label: 'Generic ISD' },
-          { nodeClass: 'target-independent-machine', label: 'Target-Independent Machine' }
-        ]
-      : [
-          { nodeClass: 'target-isd', label: 'Target ISD' },
-          { nodeClass: 'target-machine', label: 'Target Machine Instructions' }
-        ]
+  const renderOpcodeGroup = (nodeSet: any[], category: 'dag' | 'machine') => {
+    const opcodes = Array.from(new Set(
+      getNodesByCategory(nodeSet, category)
+        .map(node => node.data?.opcode || node.data?.label || node.id)
+    )).sort()
+    const label = category === 'dag' ? 'SelectionDAG Opcodes' : 'Machine Opcodes'
 
-    const categoryNodes = getNodesByCategory(nodeSet, category)
-
-    return groups.map(({ nodeClass, label }, groupIndex) => {
-      const opcodes = Array.from(new Set(
-        categoryNodes
-          .filter(node => node.data?.node_class === nodeClass)
-          .map(node => node.data?.opcode || node.data?.label || node.id)
-      )).sort()
-
-      return (
-        <div key={nodeClass} style={{ marginTop: groupIndex === 0 ? 0 : '10px' }}>
-          <div style={{ color: '#18a018', fontWeight: '600', marginBottom: '6px', fontSize: '10px', fontFamily: 'Inter, sans-serif' }}>
-            {label} ({opcodes.length})
-          </div>
-          {opcodes.length === 0 ? (
-            <div style={{ color: '#666', padding: '3px 0' }}>None</div>
-          ) : opcodes.map((opcode, idx) => (
-            <div key={String(opcode)} style={{ padding: '3px 0', borderBottom: idx < opcodes.length - 1 ? '1px solid #0a0a0a' : 'none', color: '#f0f0f0' }}>
-              {opcode}
-            </div>
-          ))}
+    return (
+      <div>
+        <div style={{ color: '#18a018', fontWeight: '600', marginBottom: '6px', fontSize: '10px', fontFamily: 'Inter, sans-serif' }}>
+          {label} ({opcodes.length})
         </div>
-      )
-    })
+        {opcodes.length === 0 ? (
+          <div style={{ color: '#666', padding: '3px 0' }}>None</div>
+        ) : opcodes.map((opcode, idx) => (
+          <div key={String(opcode)} style={{ padding: '3px 0', borderBottom: idx < opcodes.length - 1 ? '1px solid #0a0a0a' : 'none', color: '#f0f0f0' }}>
+            {opcode}
+          </div>
+        ))}
+      </div>
+    )
   }
 
   // Helper: Extract register list from any node set
@@ -568,7 +547,7 @@ export function SelectionDAGViewer({
               <span style={{ width: '1px', backgroundColor: '#1a1a1a', margin: '1px 2px' }} />
             </>
           )}
-          {(['all', 'generic', 'target', 'regs'] as const).map(tab => (
+          {(['all', 'dag', 'machine', 'regs'] as const).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(activeTab === tab ? null : tab)}
@@ -598,8 +577,8 @@ export function SelectionDAGViewer({
               }}
             >
               {tab === 'all' ? 'All' :
-               tab === 'generic' ? 'Generic' :
-               tab === 'target' ? 'Target-Specific' : 'Registers'}
+               tab === 'dag' ? 'DAG Opcodes' :
+               tab === 'machine' ? 'Machine Opcodes' : 'Registers'}
             </button>
           ))}
         </div>
@@ -623,7 +602,7 @@ export function SelectionDAGViewer({
               boxShadow: '0 2px 8px rgba(0, 0, 0, 0.5)'
             }}
           >
-            {(activeTab === 'generic' || activeTab === 'target') && renderOpcodeGroups(nodes, activeTab)}
+            {(activeTab === 'dag' || activeTab === 'machine') && renderOpcodeGroup(nodes, activeTab)}
             {activeTab === 'regs' && (() => {
               const regs = getRegisterList(nodes)
               return (
@@ -698,7 +677,7 @@ export function SelectionDAGViewer({
             {stats.nodeCount} nodes, {stats.edgeCount} edges
           </div>
           <div>
-            {stats.genericCount} generic, {stats.targetCount} target-specific
+            {stats.selectionDAGCount} DAG, {stats.machineCount} machine
           </div>
           {stats.unknownCount > 0 && <div>{stats.unknownCount} unclassified</div>}
           <div>
@@ -743,7 +722,7 @@ export function SelectionDAGViewer({
               fontSize: '11px',
               boxShadow: '0 2px 8px rgba(0, 0, 0, 0.5)'
             }}>
-              {(['all', 'generic', 'target', 'regs'] as const).map(tab => (
+              {(['all', 'dag', 'machine', 'regs'] as const).map(tab => (
                 <button
                   key={tab}
                   onClick={() => setCompareActiveTab(compareActiveTab === tab ? null : tab)}
@@ -773,8 +752,8 @@ export function SelectionDAGViewer({
                   }}
                 >
                   {tab === 'all' ? 'All' :
-                   tab === 'generic' ? 'Generic' :
-                   tab === 'target' ? 'Target-Specific' : 'Registers'}
+                   tab === 'dag' ? 'DAG Opcodes' :
+                   tab === 'machine' ? 'Machine Opcodes' : 'Registers'}
                 </button>
               ))}
             </div>
@@ -796,7 +775,7 @@ export function SelectionDAGViewer({
                 color: '#c8c8c8',
                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.5)'
               }}>
-                {(compareActiveTab === 'generic' || compareActiveTab === 'target') && renderOpcodeGroups(compareNodes, compareActiveTab)}
+                {(compareActiveTab === 'dag' || compareActiveTab === 'machine') && renderOpcodeGroup(compareNodes, compareActiveTab)}
                 {compareActiveTab === 'regs' && (() => {
                   const regs = getRegisterList(compareNodes)
                   return (
